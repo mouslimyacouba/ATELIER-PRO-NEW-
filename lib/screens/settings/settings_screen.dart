@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/contact_actions.dart';
 import '../../core/storage_service.dart';
 import '../../core/theme.dart';
-import '../../models/atelier.dart';
+import '../../models/type_atelier.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/auth_provider.dart';
 
@@ -18,7 +16,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String get _supportPhone => dotenv.env['SUPPORT_WHATSAPP_PHONE'] ?? '227XXXXXXXX';
+  // ⚠️ À personnaliser : numéro WhatsApp du support Zinder Digital.
+  static const _supportPhone = '227XXXXXXXX';
 
   String _appVersion = '';
   bool _uploadingLogo = false;
@@ -40,7 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _changeLogo() async {
     final file = await StorageService.pickImage();
-    if (file == null || !mounted) return;
+    if (file == null) return;
 
     setState(() => _uploadingLogo = true);
     try {
@@ -52,7 +51,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         key: 'logo',
         file: file,
       );
-      if (!mounted) return;
       final error = await context.read<AtelierProvider>().updateLogo(url);
       if (mounted && error != null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -75,7 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final nomCtrl = TextEditingController(text: atelier.nomAtelier);
     final telephoneCtrl = TextEditingController(text: atelier.telephone ?? '');
     final villeCtrl = TextEditingController(text: atelier.ville ?? '');
-    String specialite = atelier.specialite ?? Atelier.specialiteSuggestions.first;
+    TypeAtelier typeAtelier = atelier.typeAtelier;
     final formKey = GlobalKey<FormState>();
 
     final saved = await showModalBottomSheet<bool>(
@@ -103,14 +101,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                 ),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: Atelier.specialiteSuggestions.contains(specialite) ? specialite : Atelier.specialiteSuggestions.last,
-                  decoration: const InputDecoration(labelText: "Type d'activité"),
-                  items: Atelier.specialiteSuggestions
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                DropdownButtonFormField<TypeAtelier>(
+                  value: typeAtelier,
+                  decoration: const InputDecoration(labelText: "Métier de l'atelier"),
+                  items: TypeAtelier.values
+                      .map((t) => DropdownMenuItem(value: t, child: Text(t.dbValue)))
                       .toList(),
-                  onChanged: (v) => setSheetState(() => specialite = v ?? specialite),
+                  onChanged: (v) => setSheetState(() => typeAtelier = v ?? typeAtelier),
                 ),
+                if (typeAtelier != atelier.typeAtelier) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    "⚠️ Changer de métier modifie les champs proposés pour les prochaines fiches. "
+                    "Les fiches déjà créées restent inchangées.",
+                    style: const TextStyle(fontSize: 11, color: Colors.black45),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: telephoneCtrl,
@@ -128,7 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (!formKey.currentState!.validate()) return;
                     final error = await context.read<AtelierProvider>().updateAtelier({
                       'nom_atelier': nomCtrl.text.trim(),
-                      'specialite': specialite,
+                      'specialite': typeAtelier.dbValue,
                       'telephone': telephoneCtrl.text.trim().isEmpty ? null : telephoneCtrl.text.trim(),
                       'ville': villeCtrl.text.trim().isEmpty ? null : villeCtrl.text.trim(),
                     });
@@ -246,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Supprimer mon compte ?'),
         content: const Text(
-          'Ton atelier, tes clients, commandes, fiches de mesures et paiements seront '
+          'Ton atelier, tes clients, commandes, fiches et paiements seront '
           'définitivement supprimés. Cette action est irréversible.',
         ),
         actions: [
@@ -275,7 +281,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Tes données (Atelier, Clients, Commandes) ont été supprimées de Firebase. Pour supprimer aussi ton compte de connexion, contacte le support.',
+            'Tes données ont été supprimées. Pour supprimer aussi ton compte de connexion, contacte le support.',
           ),
         ),
       );
@@ -375,8 +381,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Paiement mobile money (iPayMoney) : à venir. Les paiements se saisissent '
-                      'manuellement pour l\'instant depuis chaque commande.',
+                      "Paiement mobile money (iPayMoney) : à venir. Les paiements se saisissent "
+                      "manuellement pour l'instant depuis chaque commande.",
                       style: TextStyle(fontSize: 13),
                     ),
                   ),
@@ -399,14 +405,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: const Text('Confidentialité des données'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/confidentialite'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: const Text('Conditions d\'utilisation'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/conditions'),
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Confidentialité'),
+                      content: const Text(
+                        'Tes données (clients, commandes, paiements) sont stockées sur Firebase et '
+                        'ne sont accessibles qu\'à ton compte. Aucune donnée n\'est partagée avec des tiers.',
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Fermer')),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

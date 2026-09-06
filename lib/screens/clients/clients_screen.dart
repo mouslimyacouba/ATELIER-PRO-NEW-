@@ -22,10 +22,10 @@ class _ClientsScreenState extends State<ClientsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final userId = context.watch<AtelierProvider>().atelier?.userId;
-    if (userId != null && !_initialized) {
+    if (!_initialized) {
       _initialized = true;
-      context.read<ClientsProvider>().load(userId);
+      final userId = context.read<AtelierProvider>().atelier?.userId;
+      if (userId != null) context.read<ClientsProvider>().load(userId);
     }
   }
 
@@ -156,37 +156,6 @@ class _ClientsScreenState extends State<ClientsScreen> {
               ),
             ),
           ),
-          if (clientsProvider.error != null)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    "Une erreur est survenue lors de la synchronisation.",
-                    style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    clientsProvider.error!,
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 12),
-                  ),
-                  if (clientsProvider.error!.contains("FAILED_PRECONDITION"))
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        "👉 Cliquez sur le lien dans la console Chrome pour créer l'index Firestore manquant.",
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                ],
-              ),
-            ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {

@@ -1,14 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/theme.dart';
 import '../../models/order.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/atelier_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/clients_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../providers/fiches_mesures_provider.dart';
@@ -32,33 +30,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _initialized = false;
-  Timer? _verificationTimer;
 
-  @override
-  void initState() {
-    super.initState();
-    _startVerificationCheck();
-  }
-
-  @override
-  void dispose() {
-    _verificationTimer?.cancel();
-    super.dispose();
-  }
-
-  void _startVerificationCheck() {
-    final auth = context.read<AuthProvider>();
-    if (auth.user != null && !auth.isEmailVerified) {
-      _verificationTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-        await auth.reloadUser();
-        if (auth.isEmailVerified) {
-          timer.cancel();
-        }
-      });
-    }
-  }
-
-  Future<void> _triggerSync() async {
+  Future<void> _loadAll() async {
     final userId = context.read<AtelierProvider>().atelier?.userId;
     if (userId == null) return;
     await Future.wait([
@@ -94,347 +67,199 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final atelier = context.watch<AtelierProvider>().atelier;
-    if (atelier != null && !_initialized) {
+    if (!_initialized) {
       _initialized = true;
-      _triggerSync();
+      _loadAll();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final atelierProvider = context.watch<AtelierProvider>();
-    final atelier = atelierProvider.atelier;
+    final atelier = context.watch<AtelierProvider>().atelier;
     final orders = context.watch<OrdersProvider>();
     final clients = context.watch<ClientsProvider>();
 
-    // S'assurer que les données sont chargées dès que l'atelier est prêt
-    if (atelier != null) {
-      _triggerSync();
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(atelier?.nomAtelier ?? 'Atelier Niger'),
+        title: Text(atelier?.nomAtelier ?? 'AtelierPro'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.ios_share, color: AtelierProColors.primary),
+            icon: const Icon(Icons.ios_share),
             tooltip: 'Partager le bilan',
             onPressed: _shareBilan,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AtelierProColors.primary),
-            tooltip: 'Paramètres',
-            onPressed: () => context.go('/parametres'),
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          await auth.reloadUser();
-          await _triggerSync();
-        },
+        onRefresh: _loadAll,
         child: orders.loading && orders.orders.isEmpty
             ? const AtelierSpinner()
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Banner Vérification Email
-                  if (auth.user != null && !auth.isEmailVerified)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AtelierProColors.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AtelierProColors.secondary.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.mail_outline, color: AtelierProColors.secondary),
-                              const SizedBox(width: 12),
-                              const Expanded(
-                                child: Text(
-                                  'Merci de confirmer votre adresse e-mail pour sécuriser votre compte.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AtelierProColors.primary,
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () async {
-                                  await auth.sendEmailVerification();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('E-mail de confirmation envoyé !')),
-                                    );
-                                  }
-                                },
-                                child: const Text('Renvoyer'),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 10),
-                          const Text(
-                            'Une fois confirmé, tirez vers le bas pour rafraîchir.',
-                            style: TextStyle(fontSize: 11, color: AtelierProColors.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // En-tête Salutation Stitch
                   Text(
                     '${_salutation()}, Artisan 👋',
-                    style: GoogleFonts.hankenGrotesk(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: AtelierProColors.primary,
-                    ),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
-                    'Voici le résumé de votre activité aujourd\'hui.',
-                    style: GoogleFonts.sourceSans3(
-                      fontSize: 15,
-                      color: AtelierProColors.onSurfaceVariant,
-                    ),
+                    "Voici un résumé de votre activité aujourd'hui.",
+                    style: TextStyle(fontSize: 14, color: Colors.black.withValues(alpha: 0.6)),
                   ),
                   const SizedBox(height: 20),
-
-                  // Bento Grid Dashboard Stitch
-                  // 1. Grande carte : Commandes en cours
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      color: AtelierProColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AtelierProColors.outlineVariant),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'COMMANDES EN COURS',
-                              style: GoogleFonts.jetBrainsMono(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AtelierProColors.onSurfaceVariant,
-                                letterSpacing: 0.5,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'COMMANDES EN COURS',
+                                style: AtelierProTheme.dataStyle(
+                                  fontSize: 11,
+                                  color: AtelierProColors.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${orders.orders.where((o) => o.status == OrderStatus.enCours || o.status == OrderStatus.enAttente).length}',
-                              style: GoogleFonts.hankenGrotesk(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                                color: AtelierProColors.primary,
+                              const SizedBox(height: 6),
+                              Text(
+                                '${orders.byStatus(OrderStatus.enCours).length}',
+                                style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         Container(
-                          width: 48,
-                          height: 48,
-                          decoration: const BoxDecoration(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
                             color: AtelierProColors.secondaryContainer,
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(
-                            Icons.pending_actions,
-                            color: AtelierProColors.secondary,
-                            size: 24,
-                          ),
+                          child: const Icon(Icons.assignment_outlined, color: AtelierProColors.secondary),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // 2. Grille 2 colonnes : Clients & CA
                   Row(
                     children: [
-                      // Total Clients
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AtelierProColors.outlineVariant),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: const BoxDecoration(
-                                  color: AtelierProColors.surfaceContainerHigh,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.group_outlined,
-                                  size: 18,
-                                  color: AtelierProColors.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                '${clients.clients.length}',
-                                style: GoogleFonts.hankenGrotesk(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  color: AtelierProColors.primary,
-                                ),
-                              ),
-                              Text(
-                                'Clients enregistrés',
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 11,
-                                  color: AtelierProColors.onSurfaceVariant,
-                                ),
-                              ),
+                              const Icon(Icons.people_outline, size: 20, color: AtelierProColors.onSurfaceVariant),
+                              const SizedBox(height: 10),
+                              Text('${clients.clients.length}',
+                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 2),
+                              const Text('Clients', style: TextStyle(fontSize: 12, color: Colors.black54)),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
-
-                      // Chiffre d'Affaires Total
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: AtelierProColors.primary,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: const BoxDecoration(
-                                  color: AtelierProColors.primaryContainer,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.payments_outlined,
-                                  size: 18,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
+                              const Icon(Icons.payments_outlined, size: 20, color: Colors.white70),
+                              const SizedBox(height: 10),
                               Text(
                                 _money.format(orders.chiffreAffairesTotal),
-                                style: GoogleFonts.hankenGrotesk(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                                style: AtelierProTheme.dataStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w700),
                               ),
-                              Text(
-                                'CA total',
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
-                              ),
+                              const SizedBox(height: 2),
+                              const Text('CA total', style: TextStyle(fontSize: 12, color: Colors.white70)),
                             ],
                           ),
                         ),
                       ),
                     ],
                   ),
-
-                  // Alerte commandes en retard (si existantes)
-                  if (orders.enRetard.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AtelierProColors.rougeAlerte.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AtelierProColors.rougeAlerte.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.warning_amber_rounded, color: AtelierProColors.rougeAlerte),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              '${orders.enRetard.length} commande(s) en retard de livraison',
-                              style: GoogleFonts.sourceSans3(
-                                fontWeight: FontWeight.w600,
-                                color: AtelierProColors.rougeAlerte,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => context.go('/commandes'),
-                            child: const Text('Voir'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 24),
-
-                  // Section Dernières Commandes
+                  const SizedBox(height: 12),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Dernières Commandes',
-                        style: GoogleFonts.hankenGrotesk(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AtelierProColors.primary,
+                      Expanded(
+                        child: _StatCard(
+                          label: 'Reste à encaisser',
+                          value: _money.format(orders.montantRestantDu),
+                          color: AtelierProColors.orangeAttente,
+                          icon: Icons.hourglass_bottom,
                         ),
                       ),
-                      TextButton(
-                        onPressed: () => context.go('/commandes'),
-                        child: Text(
-                          'Voir tout',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AtelierProColors.secondary,
-                          ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatCard(
+                          label: 'Commandes',
+                          value: '${orders.orders.length}',
+                          color: AtelierProColors.encre,
+                          icon: Icons.receipt_long,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-
-                  if (orders.orders.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: Center(
-                        child: Text(
-                          'Aucune commande pour le moment',
-                          style: GoogleFonts.sourceSans3(color: AtelierProColors.onSurfaceVariant),
+                  if (orders.enRetard.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Card(
+                      color: AtelierProColors.rougeAlerte.withValues(alpha: 0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: AtelierProColors.rougeAlerte),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                '${orders.enRetard.length} commande(s) en retard de livraison',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => context.go('/commandes'),
+                              child: const Text('Voir'),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Commandes récentes',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      TextButton(
+                        onPressed: () => context.go('/commandes'),
+                        child: const Text('Tout voir'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (orders.orders.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: Text('Aucune commande pour le moment')),
                     )
                   else
                     for (final order in orders.orders.take(5))
@@ -442,57 +267,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           onTap: () => context.go('/commandes/${order.id}'),
-                          leading: CircleAvatar(
-                            backgroundColor: AtelierProColors.surfaceContainerHigh,
-                            child: Text(
-                              order.clientName?.substring(0, order.clientName!.length.clamp(0, 2)).toUpperCase() ?? 'CL',
-                              style: GoogleFonts.jetBrainsMono(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AtelierProColors.onSurface,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            order.clientName ?? 'Client',
-                            style: GoogleFonts.sourceSans3(fontWeight: FontWeight.w600),
-                          ),
+                          title: Text(order.clientName ?? 'Client'),
                           subtitle: Text(
                             order.description,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.sourceSans3(fontSize: 13),
                           ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                _money.format(order.prixTotal),
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AtelierProColors.primary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: order.status.color.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  order.status.label,
-                                  style: TextStyle(
-                                    color: order.status.color,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          trailing: StatusPill(label: order.status.label, color: order.status.color),
                         ),
                       ),
                   const SizedBox(height: 80),
@@ -502,9 +283,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go('/commandes/nouvelle'),
         icon: const Icon(Icons.add),
-        label: Text(
-          'Nouvelle commande',
-          style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600),
+        label: const Text('Nouvelle commande'),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          ],
         ),
       ),
     );

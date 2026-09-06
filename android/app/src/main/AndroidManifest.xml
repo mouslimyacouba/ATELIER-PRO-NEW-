@@ -1,4 +1,7 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.zinderdigital.atelierpro_mobile">
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="atelierpro_mobile"
         android:name="${applicationName}"
@@ -23,6 +26,15 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="https"
+                      android:host="atelier-pro-1a9e8.firebaseapp.com"
+                      android:pathPrefix="/__/auth/links" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

@@ -1,7 +1,9 @@
 # Secrets — ne jamais commiter
 .env
-google-services.json
-GoogleService-Info.plist
+
+# Firebase — fichiers de config natifs propres à l'environnement
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
 # Flutter / Dart
 .dart_tool/

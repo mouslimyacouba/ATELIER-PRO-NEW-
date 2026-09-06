@@ -71,10 +71,12 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     });
 
     final userId = context.read<AtelierProvider>().atelier!.userId;
+    final clientNom = context.read<ClientsProvider>().byId(_clientId!)?.nomComplet;
     final result = await context.read<OrdersProvider>().createOrder(AtelierOrder(
           id: '',
           userId: userId,
           clientId: _clientId!,
+          clientName: clientNom,
           description: _descCtrl.text.trim(),
           status: OrderStatus.enAttente,
           dateCommande: DateTime.now(),
@@ -110,7 +112,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
-                initialValue: _clientId,
+                value: _clientId,
                 decoration: const InputDecoration(labelText: 'Client'),
                 items: clients
                     .map((c) => DropdownMenuItem(value: c.id, child: Text(c.nomComplet)))
@@ -124,8 +126,8 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
               if (fiches.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _ficheMesureId,
-                  decoration: const InputDecoration(labelText: 'Fiche de mesures liée (optionnel)'),
+                  value: _ficheMesureId,
+                  decoration: const InputDecoration(labelText: 'Fiche liée (optionnel)'),
                   items: fiches
                       .map<DropdownMenuItem<String>>((f) => DropdownMenuItem(value: f.id, child: Text(f.titre)))
                       .toList(),
@@ -154,8 +156,8 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(_dateEcheance == null
-                    ? 'Date de livraison souhaitée (optionnel)'
-                    : 'Livraison : ${_dateEcheance!.day}/${_dateEcheance!.month}/${_dateEcheance!.year}'),
+                    ? "Date de livraison souhaitée (optionnel)"
+                    : "Livraison : ${_dateEcheance!.day}/${_dateEcheance!.month}/${_dateEcheance!.year}"),
                 trailing: const Icon(Icons.calendar_today, size: 18),
                 onTap: _pickDate,
               ),

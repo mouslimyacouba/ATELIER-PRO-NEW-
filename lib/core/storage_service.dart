@@ -1,39 +1,54 @@
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// Centralise l'upload de photos vers Firebase Storage.
 class StorageService {
   static final _storage = FirebaseStorage.instance;
   static final _picker = ImagePicker();
 
-  /// Ouvre le sélecteur d'image (galerie), compresse légèrement, et retourne
-  /// le fichier choisi. Retourne null si l'utilisateur annule.
-  static Future<File?> pickImage({ImageSource source = ImageSource.gallery}) async {
-    final picked = await _picker.pickImage(
-      source: source,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 80,
-    );
-    if (picked == null) return null;
-    return File(picked.path);
+  /// Ouvre le sélecteur d'image (galerie) et retourne l'image choisie sous forme de [XFile].
+  static Future<XFile?> pickImage({ImageSource source = ImageSource.gallery}) async {
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      return picked;
+    } catch (e) {
+      debugPrint('Erreur pickImage: $e');
+      return null;
+    }
   }
 
-  /// Upload un fichier vers Firebase Storage et retourne son URL de téléchargement.
+  /// Upload une image vers `bucket/userId/key.ext`.
+  /// Utilise putData pour une compatibilité maximale (Web/Mobile).
   static Future<String> upload({
     required String bucket,
     required String userId,
     required String key,
-    required File file,
+    required XFile file,
   }) async {
-    final ext = file.path.split('.').last;
-    final path = '$bucket/$userId/$key.$ext';
+    try {
+      final name = file.name;
+      final ext = name.contains('.') ? name.split('.').last : 'jpg';
+      final ref = _storage.ref().child(bucket).child(userId).child('$key.$ext');
 
-    final ref = _storage.ref().child(path);
-    await ref.putFile(file);
+      final Uint8List bytes = await file.readAsBytes();
 
-    final downloadUrl = await ref.getDownloadURL();
-    return '$downloadUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+      // Utilisation de putData qui est supporté sur toutes les plateformes (Web inclu)
+      // On spécifie le contentType pour éviter les problèmes d'affichage/téléchargement
+      final uploadTask = await ref.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/${ext == "jpg" ? "jpeg" : ext}'),
+      );
+
+      return await uploadTask.ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Erreur StorageService.upload: $e');
+      rethrow;
+    }
   }
 }

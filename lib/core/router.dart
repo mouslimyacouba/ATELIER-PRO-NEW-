@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/atelier_provider.dart';
@@ -14,38 +15,28 @@ import '../screens/orders/new_order_screen.dart';
 import '../screens/orders/order_detail_screen.dart';
 import '../screens/mesures/mesures_screen.dart';
 import '../screens/settings/settings_screen.dart';
-import '../screens/settings/privacy_policy_screen.dart';
-import '../screens/settings/terms_screen.dart';
 
-GoRouter buildRouter(AuthProvider auth, AtelierProvider atelierProvider) {
+GoRouter buildRouter(BuildContext context) {
+  final auth = context.watch<AuthProvider>();
+  final atelierProvider = context.watch<AtelierProvider>();
+
   return GoRouter(
     initialLocation: '/',
-    refreshListenable: Listenable.merge([auth, atelierProvider]),
+    refreshListenable: auth,
     redirect: (context, state) {
-      // 1. Attendre que l'authentification soit initialisée
-      if (auth.initializing) return null;
-
-      final loggedIn = auth.user != null;
+      final loggedIn = auth.session != null;
       final loggingIn = state.matchedLocation == '/auth';
       final onboarding = state.matchedLocation == '/onboarding';
 
-      // 2. Gestion de la connexion
       if (!loggedIn) return loggingIn ? null : '/auth';
       if (loggedIn && loggingIn) return '/';
 
-      // 3. Attendre que l'atelier soit chargé avant de décider pour l'onboarding
-      if (loggedIn && atelierProvider.loading) return null;
-
-      // 4. Redirection vers onboarding si pas d'atelier
-      if (loggedIn && atelierProvider.atelier == null && !onboarding) {
+      if (loggedIn && !atelierProvider.loading && atelierProvider.atelier == null && !onboarding) {
         return '/onboarding';
       }
-
-      // 5. Sortir de l'onboarding si l'atelier est créé
       if (loggedIn && atelierProvider.atelier != null && onboarding) {
         return '/';
       }
-
       return null;
     },
     routes: [
@@ -74,8 +65,6 @@ GoRouter buildRouter(AuthProvider auth, AtelierProvider atelierProvider) {
           ),
           GoRoute(path: '/mesures', builder: (context, state) => const MesuresScreen()),
           GoRoute(path: '/parametres', builder: (context, state) => const SettingsScreen()),
-          GoRoute(path: '/confidentialite', builder: (context, state) => const PrivacyPolicyScreen()),
-          GoRoute(path: '/conditions', builder: (context, state) => const TermsScreen()),
         ],
       ),
     ],

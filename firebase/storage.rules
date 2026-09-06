@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Règles de sécurité Firebase Storage — AtelierPro
+// À coller dans Firebase Console > Storage > Rules.
+// Structure des fichiers : {dossier}/{userId}/{clé}.{ext}
+//   - logos/{userId}/logo.jpg       (logo de l'atelier)
+//   - photos/{userId}/{clientId}.jpg (photo d'un client)
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /logos/{userId}/{fileName} {
+      allow read: if true; // logos publics (affichés sans authentification nécessaire)
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024; // limite 5 Mo
+    }
+
+    match /photos/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+  }
+}

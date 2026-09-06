@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'type_atelier.dart';
 
 class Atelier {
-  final String id;
+  final String id; // = uid de l'utilisateur (voir AtelierProvider)
   final String userId;
   final String nomAtelier;
   final String? telephone;
@@ -23,48 +24,25 @@ class Atelier {
     required this.updatedAt,
   });
 
-  static DateTime _parseDate(dynamic val) {
-    if (val is Timestamp) return val.toDate();
-    if (val is DateTime) return val;
-    if (val is String) return DateTime.parse(val);
-    return DateTime.now();
-  }
-
-  factory Atelier.fromMap(Map<String, dynamic> map, [String? docId]) {
+  /// [id] est l'ID du document Firestore (passé séparément, pas stocké dans
+  /// le contenu du document — convention Firestore standard).
+  factory Atelier.fromMap(String id, Map<String, dynamic> map) {
     return Atelier(
-      id: docId ?? (map['id'] as String? ?? ''),
-      userId: map['user_id'] as String? ?? '',
-      nomAtelier: map['nom_atelier'] as String? ?? '',
+      id: id,
+      userId: id, // même valeur : le doc atelier est indexé par uid
+      nomAtelier: map['nomAtelier'] as String,
       telephone: map['telephone'] as String?,
       ville: map['ville'] as String?,
       specialite: map['specialite'] as String?,
-      logoUrl: map['logo_url'] as String?,
-      createdAt: _parseDate(map['created_at']),
-      updatedAt: _parseDate(map['updated_at']),
+      logoUrl: map['logoUrl'] as String?,
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toInsertMap() {
-    return {
-      'user_id': userId,
-      'nom_atelier': nomAtelier,
-      'telephone': telephone,
-      'ville': ville,
-      'specialite': specialite,
-      'logo_url': logoUrl,
-      'created_at': Timestamp.fromDate(createdAt),
-      'updated_at': Timestamp.fromDate(updatedAt),
-    };
-  }
-
-  static const specialiteSuggestions = [
-    'Couture / Confection',
-    'Sérigraphie',
-    'Menuiserie',
-    'Métallerie',
-    'Maroquinerie',
-    'Autre',
-  ];
+  /// Métier de l'atelier, dérivé du champ texte libre `specialite` (aucune
+  /// colonne dédiée nécessaire — voir TypeAtelier.fromDbValue).
+  TypeAtelier get typeAtelier => TypeAtelier.fromDbValue(specialite);
 
   String get specialiteLabel => specialite ?? 'Non renseignée';
 }

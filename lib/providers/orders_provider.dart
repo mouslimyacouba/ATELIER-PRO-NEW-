@@ -1,12 +1,10 @@
-import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import '../models/order.dart';
 import '../models/payment.dart';
 
 class OrdersProvider extends ChangeNotifier {
   final _firestore = FirebaseFirestore.instance;
-  StreamSubscription? _sub;
 
   List<AtelierOrder> _orders = [];
   bool _loading = false;
@@ -16,20 +14,14 @@ class OrdersProvider extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
 
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
-  }
-
   List<AtelierOrder> byStatus(OrderStatus status) =>
       _orders.where((o) => o.status == status).toList();
 
   double get chiffreAffairesTotal =>
-      _orders.fold(0, (acc, o) => acc + o.prixTotal);
+      _orders.fold(0, (sum, o) => sum + o.prixTotal);
 
   double get montantRestantDu =>
-      _orders.fold(0, (acc, o) => acc + o.remaining);
+      _orders.fold(0, (sum, o) => sum + o.remaining);
 
   List<AtelierOrder> get enRetard {
     final today = DateTime.now();
@@ -41,63 +33,54 @@ class OrdersProvider extends ChangeNotifier {
     }).toList();
   }
 
-  String? _currentUserId;
-
-  Future<void> load(String userId) {
-    if (_sub != null && _currentUserId == userId) return Future.value();
-
-    _sub?.cancel();
-    _currentUserId = userId;
+  Future<void> load(String userId) async {
     _loading = true;
-    _error = null;
     notifyListeners();
-
-    _sub = _firestore
-        .collection('commandes')
-        .where('user_id', isEqualTo: userId)
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .listen(
-      (snap) {
-        _orders = snap.docs.map((doc) => AtelierOrder.fromMap(doc.data(), doc.id)).toList();
-        _loading = false;
-        _error = null;
-        notifyListeners();
-      },
-      onError: (e) {
-        debugPrint("Erreur OrdersProvider: $e");
-        _error = e.toString();
-        _loading = false;
-        notifyListeners();
-      },
-    );
-    return Future.value();
+    try {
+      final snapshot = await _firestore
+          .collection('commandes')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+      _orders = snapshot.docs.map((d) => AtelierOrder.fromMap(d.id, d.data())).toList();
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<String?> createOrder(AtelierOrder order) async {
     try {
-      final data = order.toInsertMap();
-      data['created_at'] = FieldValue.serverTimestamp();
-      await _firestore.collection('commandes').add(data);
+      final docRef = await _firestore.collection('commandes').add(order.toInsertMap());
+      final fresh = await docRef.get();
+      _orders.insert(0, AtelierOrder.fromMap(fresh.id, fresh.data()!));
+      notifyListeners();
       return null;
     } catch (e) {
-      debugPrint("Erreur createOrder: $e");
       return e.toString();
     }
   }
 
   Future<String?> updateStatus(String orderId, OrderStatus status) async {
     try {
-      await _firestore
-          .collection('commandes')
-          .doc(orderId)
-          .update({'statut': status.value});
+      final docRef = _firestore.collection('commandes').doc(orderId);
+      await docRef.update({'statut': status.value, 'updatedAt': FieldValue.serverTimestamp()});
+      final fresh = await docRef.get();
+      final updated = AtelierOrder.fromMap(fresh.id, fresh.data()!);
+      final idx = _orders.indexWhere((o) => o.id == orderId);
+      if (idx != -1) _orders[idx] = updated;
+      notifyListeners();
       return null;
     } catch (e) {
       return e.toString();
     }
   }
 
+  /// Modifie la description, le montant total et/ou la fiche liée.
+  /// Ne touche pas à `acompte` (géré exclusivement via recordPayment).
   Future<String?> updateOrder(
     String orderId, {
     String? description,
@@ -108,19 +91,42 @@ class OrdersProvider extends ChangeNotifier {
     try {
       final changes = <String, dynamic>{
         if (description != null) 'description': description,
-        if (prixTotal != null) 'prix_total': prixTotal,
-        if (dateEcheance != null) 'date_echeance': Timestamp.fromDate(dateEcheance),
-        'fiche_mesure_id': ficheMesureId,
+        if (prixTotal != null) 'prixTotal': prixTotal,
+        if (dateEcheance != null) 'dateEcheance': Timestamp.fromDate(dateEcheance),
+        'ficheId': ficheMesureId,
+        'updatedAt': FieldValue.serverTimestamp(),
       };
-      await _firestore.collection('commandes').doc(orderId).update(changes);
+      final docRef = _firestore.collection('commandes').doc(orderId);
+      await docRef.update(changes);
+      final fresh = await docRef.get();
+      final updated = AtelierOrder.fromMap(fresh.id, fresh.data()!);
+      final idx = _orders.indexWhere((o) => o.id == orderId);
+      if (idx != -1) _orders[idx] = updated;
+      notifyListeners();
       return null;
     } catch (e) {
       return e.toString();
     }
   }
 
+  /// Supprime la commande et ses paiements associés. Le filtre userId est
+  /// obligatoire pour que Firestore autorise la lecture des documents à supprimer.
   Future<String?> deleteOrder(String orderId) async {
     try {
+      final order = byId(orderId);
+      if (order == null) return 'Commande introuvable';
+      final userId = order.userId;
+
+      final paiements = await _firestore
+          .collection('paiements')
+          .where('userId', isEqualTo: userId)
+          .where('commandeId', isEqualTo: orderId)
+          .get();
+
+      for (final p in paiements.docs) {
+        await p.reference.delete();
+      }
+
       await _firestore.collection('commandes').doc(orderId).delete();
       _orders.removeWhere((o) => o.id == orderId);
       notifyListeners();
@@ -130,6 +136,11 @@ class OrdersProvider extends ChangeNotifier {
     }
   }
 
+  /// Enregistre un paiement manuel (espèces, ou mobile money saisi à la main
+  /// tant que l'intégration automatique iPayMoney n'est pas branchée ici).
+  /// Incrémente `acompte` sur la commande de façon atomique
+  /// (FieldValue.increment évite toute perte de mise à jour concurrente,
+  /// contrairement à un simple read-then-write).
   Future<String?> recordPayment({
     required String orderId,
     required String userId,
@@ -137,44 +148,41 @@ class OrdersProvider extends ChangeNotifier {
     required String mode,
   }) async {
     try {
-      final batch = _firestore.batch();
+      await _firestore.collection('paiements').add(
+        AtelierPayment(
+          id: '',
+          userId: userId,
+          commandeId: orderId,
+          montant: amount,
+          mode: mode,
+          datePaiement: DateTime.now(),
+          createdAt: DateTime.now(),
+        ).toInsertMap(),
+      );
 
-      // 1. Créer le document de paiement
-      final paymentRef = _firestore.collection('paiements').doc();
-      batch.set(paymentRef, {
-        'user_id': userId,
-        'commande_id': orderId,
-        'montant': amount,
-        'mode': mode,
-        'date_paiement': FieldValue.serverTimestamp(),
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
-      // 2. Mettre à jour l'acompte de la commande de manière atomique
-      final orderRef = _firestore.collection('commandes').doc(orderId);
-      batch.update(orderRef, {
+      final docRef = _firestore.collection('commandes').doc(orderId);
+      await docRef.update({
         'acompte': FieldValue.increment(amount),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-
-      await batch.commit();
+      final fresh = await docRef.get();
+      final updated = AtelierOrder.fromMap(fresh.id, fresh.data()!);
+      final idx = _orders.indexWhere((o) => o.id == orderId);
+      if (idx != -1) _orders[idx] = updated;
+      notifyListeners();
       return null;
     } catch (e) {
-      debugPrint("Erreur recordPayment: $e");
       return e.toString();
     }
   }
 
   Future<List<AtelierPayment>> paymentsForOrder(String orderId) async {
-    try {
-      final snap = await _firestore
-          .collection('paiements')
-          .where('commande_id', isEqualTo: orderId)
-          .orderBy('date_paiement', descending: true)
-          .get();
-      return snap.docs.map((doc) => AtelierPayment.fromMap(doc.data(), doc.id)).toList();
-    } catch (_) {
-      return [];
-    }
+    final snapshot = await _firestore
+        .collection('paiements')
+        .where('commandeId', isEqualTo: orderId)
+        .orderBy('datePaiement', descending: true)
+        .get();
+    return snapshot.docs.map((d) => AtelierPayment.fromMap(d.id, d.data())).toList();
   }
 
   AtelierOrder? byId(String id) {

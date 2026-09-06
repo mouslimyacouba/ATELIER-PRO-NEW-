@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
-import '../../models/atelier.dart';
+import '../../models/type_atelier.dart';
 import '../../providers/atelier_provider.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -16,7 +16,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _nomCtrl = TextEditingController();
   final _telephoneCtrl = TextEditingController();
   final _villeCtrl = TextEditingController();
-  String _specialite = Atelier.specialiteSuggestions.first;
+  TypeAtelier _typeAtelier = TypeAtelier.couture;
   bool _loading = false;
   String? _error;
 
@@ -35,34 +35,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _error = null;
     });
 
-    try {
-      final result = await context.read<AtelierProvider>().createAtelier(
-            nomAtelier: _nomCtrl.text.trim(),
-            specialite: _specialite,
-            telephone: _telephoneCtrl.text.trim().isEmpty ? null : _telephoneCtrl.text.trim(),
-            ville: _villeCtrl.text.trim().isEmpty ? null : _villeCtrl.text.trim(),
-          );
+    final result = await context.read<AtelierProvider>().createAtelier(
+          nomAtelier: _nomCtrl.text.trim(),
+          specialite: _typeAtelier.dbValue,
+          telephone: _telephoneCtrl.text.trim().isEmpty ? null : _telephoneCtrl.text.trim(),
+          ville: _villeCtrl.text.trim().isEmpty ? null : _villeCtrl.text.trim(),
+        );
 
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = result;
-      });
-
-      if (result != null) {
-        debugPrint("Erreur création atelier: $result");
-      } else {
-        debugPrint("Atelier créé avec succès, redirection en cours...");
-      }
-    } catch (e) {
-      debugPrint("Exception _submit onboarding: $e");
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = e.toString();
-        });
-      }
-    }
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _error = result;
+    });
+    // Si result == null, le router redirige automatiquement vers '/'
+    // dès que AtelierProvider notifie son changement d'état.
   }
 
   @override
@@ -84,24 +70,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Quelques infos pour démarrer — vous pourrez tout modifier plus tard.',
+                  "Quelques infos pour démarrer — vous pourrez tout modifier plus tard.",
                   style: TextStyle(color: Colors.black54),
                 ),
                 const SizedBox(height: 28),
                 TextFormField(
                   controller: _nomCtrl,
-                  decoration: const InputDecoration(labelText: 'Nom de l\'atelier'),
+                  decoration: const InputDecoration(labelText: "Nom de l'atelier"),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _specialite,
-                  decoration: const InputDecoration(labelText: "Type d'activité"),
-                  items: Atelier.specialiteSuggestions
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                DropdownButtonFormField<TypeAtelier>(
+                  value: _typeAtelier,
+                  decoration: const InputDecoration(labelText: "Métier de l'atelier"),
+                  items: TypeAtelier.values
+                      .map((t) => DropdownMenuItem(value: t, child: Text(t.dbValue)))
                       .toList(),
-                  onChanged: (v) => setState(() => _specialite = v ?? _specialite),
+                  onChanged: (v) => setState(() => _typeAtelier = v ?? _typeAtelier),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -116,18 +102,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade200),
-                    ),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: Colors.red.shade900, fontSize: 13),
-                    ),
-                  ),
+                  Text(_error!, style: const TextStyle(color: AtelierProColors.rougeAlerte)),
                 ],
                 const SizedBox(height: 24),
                 ElevatedButton(

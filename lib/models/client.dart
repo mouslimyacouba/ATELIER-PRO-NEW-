@@ -23,37 +23,30 @@ class AtelierClient {
     required this.updatedAt,
   });
 
-  static DateTime _parseDate(dynamic val) {
-    if (val is Timestamp) return val.toDate();
-    if (val is DateTime) return val;
-    if (val is String) return DateTime.parse(val);
-    return DateTime.now();
-  }
-
-  factory AtelierClient.fromMap(Map<String, dynamic> map, [String? docId]) {
+  factory AtelierClient.fromMap(String id, Map<String, dynamic> map) {
     return AtelierClient(
-      id: docId ?? (map['id'] as String? ?? ''),
-      userId: map['user_id'] as String? ?? '',
-      nomComplet: map['nom_complet'] as String? ?? '',
+      id: id,
+      userId: map['userId'] as String,
+      nomComplet: map['nomComplet'] as String,
       telephone: map['telephone'] as String?,
       adresse: map['adresse'] as String?,
       notes: map['notes'] as String?,
-      photoUrl: map['photo_url'] as String?,
-      createdAt: _parseDate(map['created_at']),
-      updatedAt: _parseDate(map['updated_at']),
+      photoUrl: map['photoUrl'] as String?,
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toInsertMap() {
     return {
-      'user_id': userId,
-      'nom_complet': nomComplet,
+      'userId': userId,
+      'nomComplet': nomComplet,
       'telephone': telephone,
       'adresse': adresse,
       'notes': notes,
-      'photo_url': photoUrl,
-      'created_at': Timestamp.fromDate(createdAt),
-      'updated_at': Timestamp.fromDate(updatedAt),
+      'photoUrl': photoUrl,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 }

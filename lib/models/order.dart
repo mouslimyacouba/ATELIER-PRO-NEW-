@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
+/// Statuts de commande (avant : enum Postgres `statut_commande`, maintenant
+/// juste une chaîne stockée telle quelle côté Firestore).
 enum OrderStatus { enAttente, enCours, termine, livre }
 
 extension OrderStatusX on OrderStatus {
@@ -33,13 +35,13 @@ extension OrderStatusX on OrderStatus {
   Color get color {
     switch (this) {
       case OrderStatus.enAttente:
-        return const Color(0xFFD98A3D);
+        return const Color(0xFFF59E0B); // status-pending
       case OrderStatus.enCours:
-        return const Color(0xFF3D6B83);
+        return const Color(0xFF3B82F6); // status-progress
       case OrderStatus.termine:
-        return const Color(0xFF3D8361);
+        return const Color(0xFF10B981); // status-done
       case OrderStatus.livre:
-        return const Color(0xFF2B7A3D);
+        return const Color(0xFF6366F1); // status-delivered
     }
   }
 
@@ -63,6 +65,9 @@ class AtelierOrder {
   final double prixTotal;
   final double acompte;
   final DateTime createdAt;
+  // Dénormalisé (copié au moment de la création) : Firestore ne fait pas de
+  // jointures. Si le client est renommé plus tard, les anciennes commandes
+  // gardent l'ancien nom affiché — compromis standard et acceptable ici.
   final String? clientName;
 
   AtelierOrder({
@@ -83,54 +88,42 @@ class AtelierOrder {
   double get remaining => (prixTotal - acompte).clamp(0, double.infinity);
   bool get isFullyPaid => remaining <= 0;
 
+  // Alias pratiques utilisés dans l'UI (montants).
   double get totalAmount => prixTotal;
   double get paidAmount => acompte;
   DateTime? get dueDate => dateEcheance;
 
-  static DateTime _parseDate(dynamic val) {
-    if (val is Timestamp) return val.toDate();
-    if (val is DateTime) return val;
-    if (val is String) return DateTime.parse(val);
-    return DateTime.now();
-  }
-
-  factory AtelierOrder.fromMap(Map<String, dynamic> map, [String? docId]) {
-    String? cName;
-    if (map['client_name'] != null) {
-      cName = map['client_name'] as String?;
-    } else if (map['clients'] is Map) {
-      cName = map['clients']['nom_complet'] as String?;
-    }
-
+  factory AtelierOrder.fromMap(String id, Map<String, dynamic> map) {
     return AtelierOrder(
-      id: docId ?? (map['id'] as String? ?? ''),
-      userId: map['user_id'] as String? ?? '',
-      clientId: map['client_id'] as String? ?? '',
-      ficheMesureId: map['fiche_mesure_id'] as String?,
-      description: map['description'] as String? ?? '',
-      status: OrderStatusX.fromValue(map['statut'] as String? ?? 'en_attente'),
-      dateCommande: _parseDate(map['date_commande']),
-      dateEcheance: map['date_echeance'] != null ? _parseDate(map['date_echeance']) : null,
-      prixTotal: (map['prix_total'] as num?)?.toDouble() ?? 0.0,
-      acompte: (map['acompte'] as num?)?.toDouble() ?? 0.0,
-      createdAt: _parseDate(map['created_at']),
-      clientName: cName,
+      id: id,
+      userId: map['userId'] as String,
+      clientId: map['clientId'] as String,
+      ficheMesureId: map['ficheId'] as String?,
+      description: map['description'] as String,
+      status: OrderStatusX.fromValue(map['statut'] as String),
+      dateCommande: (map['dateCommande'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      dateEcheance: (map['dateEcheance'] as Timestamp?)?.toDate(),
+      prixTotal: (map['prixTotal'] as num).toDouble(),
+      acompte: (map['acompte'] as num?)?.toDouble() ?? 0,
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      clientName: map['clientNom'] as String?,
     );
   }
 
   Map<String, dynamic> toInsertMap() {
     return {
-      'user_id': userId,
-      'client_id': clientId,
-      'client_name': clientName,
-      'fiche_mesure_id': ficheMesureId,
+      'userId': userId,
+      'clientId': clientId,
+      'clientNom': clientName,
+      'ficheId': ficheMesureId,
       'description': description,
       'statut': status.value,
-      'date_commande': Timestamp.fromDate(dateCommande),
-      'date_echeance': dateEcheance != null ? Timestamp.fromDate(dateEcheance!) : null,
-      'prix_total': prixTotal,
+      'dateCommande': Timestamp.fromDate(dateCommande),
+      'dateEcheance': dateEcheance != null ? Timestamp.fromDate(dateEcheance!) : null,
+      'prixTotal': prixTotal,
       'acompte': acompte,
-      'created_at': Timestamp.fromDate(createdAt),
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 }

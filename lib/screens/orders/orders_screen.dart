@@ -26,10 +26,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final userId = context.watch<AtelierProvider>().atelier?.userId;
-    if (userId != null && !_initialized) {
+    if (!_initialized) {
       _initialized = true;
-      context.read<OrdersProvider>().load(userId);
+      final userId = context.read<AtelierProvider>().atelier?.userId;
+      if (userId != null) context.read<OrdersProvider>().load(userId);
     }
   }
 
@@ -126,17 +126,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   maxLines: 2,
                                 ),
                                 isThreeLine: true,
-                                trailing: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: order.status.color.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    order.status.label,
-                                    style: TextStyle(color: order.status.color, fontSize: 12, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
+                                trailing: StatusPill(label: order.status.label, color: order.status.color),
                               ),
                             );
                           },

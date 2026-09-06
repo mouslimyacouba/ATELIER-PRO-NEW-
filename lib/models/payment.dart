@@ -19,6 +19,8 @@ class AtelierPayment {
     required this.createdAt,
   });
 
+  // `mode` est un simple champ texte (pas d'enum) : ces libellés sont juste
+  // pour l'affichage, on peut en ajouter librement.
   static const modeLabels = {
     'especes': 'Espèces',
     'airtel_money': 'Airtel Money',
@@ -31,33 +33,26 @@ class AtelierPayment {
 
   String get modeLabel => modeLabels[mode] ?? mode;
 
-  static DateTime _parseDate(dynamic val) {
-    if (val is Timestamp) return val.toDate();
-    if (val is DateTime) return val;
-    if (val is String) return DateTime.parse(val);
-    return DateTime.now();
-  }
-
-  factory AtelierPayment.fromMap(Map<String, dynamic> map, [String? docId]) {
+  factory AtelierPayment.fromMap(String id, Map<String, dynamic> map) {
     return AtelierPayment(
-      id: docId ?? (map['id'] as String? ?? ''),
-      userId: map['user_id'] as String? ?? '',
-      commandeId: map['commande_id'] as String? ?? '',
-      montant: (map['montant'] as num?)?.toDouble() ?? 0.0,
+      id: id,
+      userId: map['userId'] as String,
+      commandeId: map['commandeId'] as String,
+      montant: (map['montant'] as num).toDouble(),
       mode: (map['mode'] as String?) ?? 'especes',
-      datePaiement: _parseDate(map['date_paiement']),
-      createdAt: _parseDate(map['created_at']),
+      datePaiement: (map['datePaiement'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toInsertMap() {
     return {
-      'user_id': userId,
-      'commande_id': commandeId,
+      'userId': userId,
+      'commandeId': commandeId,
       'montant': montant,
       'mode': mode,
-      'date_paiement': Timestamp.fromDate(datePaiement),
-      'created_at': Timestamp.fromDate(createdAt),
+      'datePaiement': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 }

@@ -7,10 +7,10 @@ class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.child});
 
   static const _tabs = [
-    ('/', Icons.dashboard_outlined, Icons.dashboard, 'Accueil'),
-    ('/commandes', Icons.receipt_long_outlined, Icons.receipt_long, 'Commandes'),
+    ('/', Icons.storefront_outlined, Icons.storefront, 'Atelier'),
     ('/clients', Icons.people_outline, Icons.people, 'Clients'),
-    ('/mesures', Icons.straighten_outlined, Icons.straighten, 'Mesures'),
+    ('/commandes', Icons.receipt_long_outlined, Icons.receipt_long, 'Commandes'),
+    ('/mesures', Icons.description_outlined, Icons.description, 'Fiches'),
     ('/parametres', Icons.settings_outlined, Icons.settings, 'Réglages'),
   ];
 
@@ -30,8 +30,7 @@ class AppShell extends StatelessWidget {
         selectedIndex: currentIndex,
         onDestinationSelected: (i) => context.go(_tabs[i].$1),
         backgroundColor: Colors.white,
-        elevation: 4,
-        indicatorColor: AtelierProColors.primary.withValues(alpha: 0.12),
+        indicatorColor: AtelierProColors.secondaryContainer,
         destinations: [
           for (final tab in _tabs)
             NavigationDestination(

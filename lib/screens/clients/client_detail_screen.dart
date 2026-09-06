@@ -39,7 +39,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
 
   Future<void> _changePhoto() async {
     final file = await StorageService.pickImage();
-    if (file == null || !mounted) return;
+    if (file == null) return;
 
     setState(() => _uploadingPhoto = true);
     try {
@@ -51,7 +51,6 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         key: widget.clientId,
         file: file,
       );
-      if (!mounted) return;
       final error = await context.read<ClientsProvider>().updatePhoto(widget.clientId, url);
       if (mounted && error != null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -71,7 +70,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Supprimer ce client ?'),
         content: Text(
-          '$clientName sera supprimé, ainsi que ses commandes et fiches de mesures associées. Cette action est irréversible.',
+          '$clientName sera supprimé, ainsi que ses commandes et fiches associées. Cette action est irréversible.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
@@ -195,60 +194,6 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          if (orders.any((o) => !o.isFullyPaid)) ...[
-            const Text('Actions rapides', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final unpaid = orders.where((o) => !o.isFullyPaid).toList();
-                      if (unpaid.isEmpty) return;
-                      final latest = unpaid.first;
-                      final atelier = context.read<AtelierProvider>().atelier;
-                      final message =
-                          'Bonjour ${client.nomComplet}, un petit rappel de ${atelier?.nomAtelier ?? 'notre atelier'} : '
-                          'il reste ${_money.format(latest.remaining)} à régler pour votre commande "${latest.description}". '
-                          'Merci 🙏';
-                      openWhatsApp(client.telephone!, message: message);
-                    },
-                    icon: const Icon(Icons.notifications_active_outlined, size: 18),
-                    label: const Text('Rappel Paiement', style: TextStyle(fontSize: 13)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AtelierProColors.orangeAttente.withValues(alpha: 0.1),
-                      foregroundColor: AtelierProColors.orangeAttente,
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final active = orders.where((o) => o.status != OrderStatus.livre && o.dateEcheance != null).toList();
-                      if (active.isEmpty) return;
-                      final latest = active.first;
-                      final atelier = context.read<AtelierProvider>().atelier;
-                      final message =
-                          'Bonjour ${client.nomComplet}, votre commande "${latest.description}" est en cours. '
-                          'Livraison prévue le ${DateFormat('dd/MM/yyyy').format(latest.dateEcheance!)}. '
-                          'À bientôt chez ${atelier?.nomAtelier ?? 'nous'} !';
-                      openWhatsApp(client.telephone!, message: message);
-                    },
-                    icon: const Icon(Icons.local_shipping_outlined, size: 18),
-                    label: const Text('Rappel Livraison', style: TextStyle(fontSize: 13)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AtelierProColors.primary.withValues(alpha: 0.1),
-                      foregroundColor: AtelierProColors.primary,
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -273,17 +218,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                   onTap: () => context.go('/commandes/${order.id}'),
                   title: Text(order.description, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text('${_money.format(order.prixTotal)} · reste ${_money.format(order.remaining)}'),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: order.status.color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      order.status.label,
-                      style: TextStyle(color: order.status.color, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+                  trailing: StatusPill(label: order.status.label, color: order.status.color),
                 ),
               ),
         ],

@@ -25,38 +25,28 @@ String _buildReceiptText({
   required List<AtelierPayment> payments,
 }) {
   final buffer = StringBuffer();
-  buffer.writeln('✨ *REÇU - ${atelier?.nomAtelier?.toUpperCase() ?? 'ATELIER'}* ✨');
-  if (atelier?.ville != null) buffer.writeln('📍 ${atelier!.ville}');
-  if (atelier?.telephone != null) buffer.writeln('📞 ${atelier!.telephone}');
-  buffer.writeln('━━━━━━━━━━━━━━━━━━━━');
-  buffer.writeln('👤 *Client :* ${client?.nomComplet ?? '—'}');
-  buffer.writeln('📦 *Commande :* ${order.description}');
-  buffer.writeln('📅 *Date :* ${_dateShort.format(order.dateCommande)}');
+  buffer.writeln('🧾 *${atelier?.nomAtelier ?? 'Reçu'}*');
+  if (atelier?.telephone != null) buffer.writeln('☎️ ${atelier!.telephone}');
+  buffer.writeln('—————————————');
+  buffer.writeln('Client : ${client?.nomComplet ?? '—'}');
+  buffer.writeln('Commande : ${order.description}');
+  buffer.writeln('Date : ${_dateShort.format(order.dateCommande)}');
   if (order.dateEcheance != null) {
-    buffer.writeln('🚚 *Livraison prévue :* ${_dateShort.format(order.dateEcheance!)}');
+    buffer.writeln('Livraison prévue : ${_dateShort.format(order.dateEcheance!)}');
   }
-  buffer.writeln('━━━━━━━━━━━━━━━━━━━━');
-  buffer.writeln('💰 *MONTANT TOTAL :* ${_money.format(order.prixTotal)}');
-
+  buffer.writeln('Statut : ${order.status.label}');
+  buffer.writeln('—————————————');
+  buffer.writeln('Montant total : ${_money.format(order.prixTotal)}');
   if (payments.isNotEmpty) {
-    buffer.writeln('\n*Détails des paiements :*');
+    buffer.writeln('Paiements :');
     for (final p in payments) {
-      buffer.writeln('✅ ${_dateShort.format(p.datePaiement)} : ${_money.format(p.montant)} (${p.modeLabel})');
+      buffer.writeln('  • ${_dateShort.format(p.datePaiement)} — ${_money.format(p.montant)} (${p.modeLabel})');
     }
   }
-
-  buffer.writeln('\n━━━━━━━━━━━━━━━━━━━━');
-  buffer.writeln('💵 *Déjà payé :* ${_money.format(order.acompte)}');
-  buffer.writeln('📉 *Reste à payer :* *${_money.format(order.remaining)}*');
-  buffer.writeln('━━━━━━━━━━━━━━━━━━━━');
-
-  if (order.isFullyPaid) {
-    buffer.writeln('\n✅ *COMMANDE SOLDÉE*');
-    buffer.writeln('Merci pour votre confiance !');
-  } else {
-    buffer.writeln('\n🙏 Merci de votre confiance.');
-  }
-
+  buffer.writeln('Payé : ${_money.format(order.acompte)}');
+  buffer.writeln('Reste à payer : ${_money.format(order.remaining)}');
+  buffer.writeln('—————————————');
+  buffer.writeln(order.isFullyPaid ? '✅ Commande soldée. Merci !' : 'Merci de votre confiance 🙏');
   return buffer.toString();
 }
 
@@ -126,7 +116,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue: method,
+                  value: method,
                   decoration: const InputDecoration(labelText: 'Mode de paiement'),
                   items: AtelierPayment.modeLabels.entries
                       .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
@@ -152,12 +142,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         );
                     if (ctx.mounted) {
                       if (error != null) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Erreur : $error")));
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(error)));
                       } else {
                         Navigator.of(ctx).pop(true);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Paiement enregistré avec succès')),
-                        );
                       }
                     }
                   },
@@ -330,29 +317,77 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
                 children: [
-                  Text(order.description, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _AmountBlock(label: 'Total', value: _money.format(order.prixTotal)),
-                      _AmountBlock(label: 'Payé', value: _money.format(order.acompte), color: AtelierProColors.vertSucces),
-                      _AmountBlock(label: 'Reste', value: _money.format(order.remaining), color: AtelierProColors.orangeAttente),
-                    ],
+                  Text(
+                    'COMMANDE #${order.id.substring(0, 4).toUpperCase()}',
+                    style: AtelierProTheme.dataStyle(fontSize: 12, color: AtelierProColors.onSurfaceVariant),
                   ),
-                  if (order.dateEcheance != null) ...[
-                    const SizedBox(height: 12),
-                    Text('Livraison prévue : ${DateFormat('dd/MM/yyyy').format(order.dateEcheance!)}',
-                        style: const TextStyle(color: Colors.black54)),
-                  ],
+                  const SizedBox(width: 8),
+                  StatusPill(label: order.status.label, color: order.status.color),
                 ],
               ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(order.description, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(client?.nomComplet ?? 'Client', style: TextStyle(color: Colors.black.withValues(alpha: 0.6))),
+          if (order.dateEcheance != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Livraison prévue : ${DateFormat('dd/MM/yyyy').format(order.dateEcheance!)}',
+              style: const TextStyle(color: Colors.black54, fontSize: 13),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AtelierProColors.primary,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Prix Total', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text(_money.format(order.prixTotal),
+                        style: AtelierProTheme.dataStyle(color: Colors.white, fontSize: 14)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Acompte payé', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text('+ ${_money.format(order.acompte)}',
+                        style: AtelierProTheme.dataStyle(color: const Color(0xFF6EE7B7), fontSize: 14)),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Divider(color: Colors.white24, height: 1),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Solde restant', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                    Text(
+                      _money.format(order.remaining),
+                      style: AtelierProTheme.dataStyle(
+                        color: order.isFullyPaid ? const Color(0xFF6EE7B7) : const Color(0xFFFFDB94),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -367,11 +402,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
               OutlinedButton.icon(
                 onPressed: () => _sendReceiptWhatsApp(order, client),
-                icon: const Icon(Icons.share, size: 16, color: Color(0xFF25D366)),
-                label: const Text('Reçu WhatsApp', style: TextStyle(color: Color(0xFF25D366))),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF25D366)),
-                ),
+                icon: const Icon(Icons.chat, size: 16, color: Color(0xFF25D366)),
+                label: const Text('Reçu WhatsApp'),
               ),
               if (!order.isFullyPaid)
                 OutlinedButton.icon(
@@ -441,25 +473,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
         ],
       ),
-    );
-  }
-}
-
-class _AmountBlock extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? color;
-  const _AmountBlock({required this.label, required this.value, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.black54)),
-        const SizedBox(height: 2),
-        Text(value, style: TextStyle(fontWeight: FontWeight.w700, color: color)),
-      ],
     );
   }
 }
