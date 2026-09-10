@@ -185,77 +185,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _changePassword() async {
-    final passwordCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Changer le mot de passe',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: passwordCtrl,
-                obscureText: true,
-                decoration:
-                    const InputDecoration(labelText: 'Nouveau mot de passe'),
-                validator: (v) =>
-                    (v == null || v.length < 6) ? '6 caractères minimum' : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: confirmCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(
-                    labelText: 'Confirmer le mot de passe'),
-                validator: (v) => v != passwordCtrl.text
-                    ? 'Les mots de passe ne correspondent pas'
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () async {
-                  if (!formKey.currentState!.validate()) return;
-                  final error = await context
-                      .read<AuthProvider>()
-                      .updatePassword(passwordCtrl.text);
-                  if (ctx.mounted) {
-                    if (error != null) {
-                      ScaffoldMessenger.of(ctx)
-                          .showSnackBar(SnackBar(content: Text(error)));
-                    } else {
-                      Navigator.of(ctx).pop(true);
-                    }
-                  }
-                },
-                child: const Text('Mettre à jour'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mot de passe mis à jour')));
-    }
-  }
 
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
@@ -411,15 +340,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text(user?.email ?? '—'),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('Changer le mot de passe'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _changePassword,
             ),
           ),
           const SizedBox(height: 24),

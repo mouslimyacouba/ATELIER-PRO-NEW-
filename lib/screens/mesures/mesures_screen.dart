@@ -60,6 +60,7 @@ class _MesuresScreenState extends State<MesuresScreen> {
       }
     }
     final formKey = GlobalKey<FormState>();
+    bool isEditing = existing == null;
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -81,9 +82,20 @@ class _MesuresScreenState extends State<MesuresScreen> {
               child: ListView(
                 controller: scrollController,
                 children: [
-                  Text(
-                    existing == null ? 'Nouvelle ${template.nomFiche.toLowerCase()}' : 'Modifier la fiche',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        existing == null ? 'Nouvelle ${template.nomFiche.toLowerCase()}' : (isEditing ? 'Modifier la fiche' : 'Détails de la fiche'),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      if (existing != null && !isEditing)
+                        IconButton(
+                          onPressed: () => setSheetState(() => isEditing = true),
+                          icon: const Icon(Icons.edit_outlined, color: AtelierProColors.terracotta),
+                          tooltip: 'Modifier',
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
@@ -92,12 +104,13 @@ class _MesuresScreenState extends State<MesuresScreen> {
                     items: clients
                         .map((c) => DropdownMenuItem(value: c.id, child: Text(c.nomComplet)))
                         .toList(),
-                    onChanged: existing != null ? null : (v) => clientId = v,
+                    onChanged: isEditing && existing == null ? (v) => clientId = v : null,
                     validator: (v) => v == null ? 'Sélectionnez un client' : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: titreCtrl,
+                    readOnly: !isEditing,
                     decoration: const InputDecoration(labelText: 'Titre'),
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Titre requis' : null,
                   ),
@@ -112,13 +125,14 @@ class _MesuresScreenState extends State<MesuresScreen> {
                               items: (champ.options ?? [])
                                   .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                                   .toList(),
-                              onChanged: (v) => setSheetState(() => champListe[champ.id] = v),
+                              onChanged: isEditing ? (v) => setSheetState(() => champListe[champ.id] = v) : null,
                               validator: champ.obligatoire
                                   ? (v) => (v == null || v.isEmpty) ? 'Champ requis' : null
                                   : null,
                             )
                           : TextFormField(
                               controller: champCtrls[champ.id],
+                              readOnly: !isEditing,
                               keyboardType: champ.typeChamp == TypeChamp.nombre
                                   ? const TextInputType.numberWithOptions(decimal: true)
                                   : TextInputType.text,
@@ -133,12 +147,14 @@ class _MesuresScreenState extends State<MesuresScreen> {
                     ),
                   TextFormField(
                     controller: notesCtrl,
+                    readOnly: !isEditing,
                     maxLines: 2,
                     decoration: const InputDecoration(labelText: 'Notes'),
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: clients.isEmpty
+                  if (isEditing)
+                    ElevatedButton(
+                      onPressed: clients.isEmpty
                         ? null
                         : () async {
                             if (!formKey.currentState!.validate()) return;
