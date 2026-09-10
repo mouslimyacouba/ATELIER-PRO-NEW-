@@ -12,37 +12,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper pour vérifier si l'utilisateur est propriétaire du document.
-    // Supporte à la fois camelCase (userId) et snake_case (user_id) pour la transition.
-    function isOwner(data) {
-      return request.auth != null && (
-        request.auth.uid == data.userId ||
-        request.auth.uid == data.user_id
-      );
-    }
-
     match /ateliers/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     match /clients/{docId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow read, update, delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
     }
 
     match /commandes/{docId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow read, update, delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
     }
 
     match /paiements/{docId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow read, update, delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
     }
 
     match /fiches/{docId} {
-      allow read, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow read, update, delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
     }
+
+    // Tout le reste est bloqué par défaut (pas de règle = refusé en mode
+    // production, comportement voulu).
   }
 }

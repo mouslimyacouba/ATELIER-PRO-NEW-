@@ -76,6 +76,20 @@ depuis la racine du projet, qui télécharge les bons fichiers natifs ET régén
 `firebase_options.dart` avec de vraies valeurs — dans ce cas, garder le fichier généré par la
 CLI plutôt que celui founi ici, ou fusionner manuellement les deux approches.
 
+### 6. Connexion Google (obligatoire pour que le bouton "Continuer avec Google" fonctionne)
+
+1. Firebase Console > Authentication > Sign-in method > active le fournisseur **Google**
+2. **Android uniquement** : Google Sign-In exige l'empreinte SHA-1 (et idéalement SHA-256) de
+   ta clé de signature, enregistrée dans Firebase :
+   ```bash
+   cd android && ./gradlew signingReport
+   ```
+   Copie le SHA-1 (et SHA-256) affiché pour la variante `debug` (et plus tard `release`),
+   colle-les dans Firebase Console > Paramètres du projet > ton app Android > "Ajouter une
+   empreinte". Retélécharge `google-services.json` après ça et remplace l'ancien.
+3. Sans ces deux étapes, le bouton Google renverra une erreur (`ApiException: 10` typiquement)
+   — c'est la cause n°1 des soucis de connexion Google sous Android, à vérifier en premier.
+
 ## Générer l'APK
 
 ```bash

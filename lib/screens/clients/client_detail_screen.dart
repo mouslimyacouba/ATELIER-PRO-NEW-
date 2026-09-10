@@ -6,12 +6,14 @@ import '../../core/contact_actions.dart';
 import '../../core/storage_service.dart';
 import '../../core/theme.dart';
 import '../../models/order.dart';
+import '../../models/payment.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/clients_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../widgets/spinner.dart';
 
 final _money = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
+final _dateShort = DateFormat('dd/MM/yyyy');
 
 class ClientDetailScreen extends StatefulWidget {
   final String clientId;
@@ -83,7 +85,9 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     );
     if (confirmed != true || !context.mounted) return;
 
-    final error = await context.read<ClientsProvider>().deleteClient(widget.clientId);
+    final userId = context.read<AtelierProvider>().atelier?.userId;
+    if (userId == null) return;
+    final error = await context.read<ClientsProvider>().deleteClient(widget.clientId, userId);
     if (!context.mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -95,11 +99,9 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final client = context.watch<ClientsProvider>().byId(widget.clientId);
-    final orders = context
-        .watch<OrdersProvider>()
-        .orders
-        .where((o) => o.clientId == widget.clientId)
-        .toList();
+    final ordersProvider = context.watch<OrdersProvider>();
+    final orders = ordersProvider.orders.where((o) => o.clientId == widget.clientId).toList();
+    final payments = ordersProvider.paymentsForClient(widget.clientId);
 
     if (client == null) {
       return const Scaffold(body: AtelierSpinner());
@@ -221,10 +223,119 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                   trailing: StatusPill(label: order.status.label, color: order.status.color),
                 ),
               ),
+          const SizedBox(height: 20),
+          const Text('Historique', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          _ClientTimeline(orders: orders, payments: payments),
         ],
       ),
     );
   }
+}
+
+/// Fusionne commandes (création) et paiements (encaissements) en une seule
+/// liste chronologique — Firestore ne permettant pas de requête combinée
+/// entre deux collections, la fusion se fait côté client sur des listes déjà
+/// chargées en mémoire (peu volumineuses par client, coût négligeable).
+class _ClientTimeline extends StatelessWidget {
+  final List<AtelierOrder> orders;
+  final List<AtelierPayment> payments;
+  const _ClientTimeline({required this.orders, required this.payments});
+
+  @override
+  Widget build(BuildContext context) {
+    final events = <_TimelineEvent>[
+      for (final o in orders)
+        _TimelineEvent(
+          date: o.createdAt,
+          icon: Icons.add_box_outlined,
+          color: AtelierProColors.tertiary,
+          title: 'Commande créée',
+          subtitle: o.description,
+          trailing: _money.format(o.prixTotal),
+        ),
+      for (final p in payments)
+        _TimelineEvent(
+          date: p.datePaiement,
+          icon: Icons.payments_outlined,
+          color: AtelierProColors.statusDone,
+          title: 'Paiement reçu',
+          subtitle: p.modeLabel,
+          trailing: _money.format(p.montant),
+        ),
+    ]..sort((a, b) => b.date.compareTo(a.date));
+
+    if (events.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: Text('Aucune activité pour le moment')),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final event in events)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: event.color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(event.icon, size: 16, color: event.color),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(event.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          Text(event.trailing,
+                              style: AtelierProTheme.dataStyle(fontSize: 13, color: event.color)),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        event.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, color: AtelierProColors.onSurfaceVariant),
+                      ),
+                      Text(_dateShort.format(event.date), style: const TextStyle(fontSize: 11, color: AtelierProColors.onSurfaceMuted)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _TimelineEvent {
+  final DateTime date;
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final String trailing;
+
+  _TimelineEvent({
+    required this.date,
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+  });
 }
 
 class _InfoRow extends StatelessWidget {

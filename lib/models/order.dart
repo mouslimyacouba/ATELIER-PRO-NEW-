@@ -122,7 +122,7 @@ class AtelierOrder {
       'dateEcheance': dateEcheance != null ? Timestamp.fromDate(dateEcheance!) : null,
       'prixTotal': prixTotal,
       'acompte': acompte,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': Timestamp.fromDate(DateTime.now()), // pas serverTimestamp() : sinon disparaît des listes triées jusqu'à confirmation serveur
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }

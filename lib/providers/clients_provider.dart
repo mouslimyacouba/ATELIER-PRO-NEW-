@@ -1,11 +1,13 @@
 import 'dart:async';
+import '../core/firestore_errors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/client.dart';
 
 class ClientsProvider extends ChangeNotifier {
   final _firestore = FirebaseFirestore.instance;
-  StreamSubscription? _sub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
+  String? _currentUserId;
 
   List<AtelierClient> _clients = [];
   bool _loading = false;
@@ -21,50 +23,57 @@ class ClientsProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Charge les clients en temps réel. S'abonne aux changements Firestore.
-  Future<void> load(String userId) async {
-    // Si on écoute déjà le bon utilisateur, on ne fait rien
-    if (_sub != null) return;
-
+  /// S'abonne en temps réel aux clients de cet utilisateur. Hors ligne,
+  /// Firestore sert immédiatement la dernière version connue depuis le
+  /// cache local ; les écritures faites hors ligne (ajout/modif/suppression)
+  /// apparaissent aussi immédiatement ici (cache local), puis se
+  /// synchronisent en arrière-plan dès que le réseau revient — aucune
+  /// action de l'utilisateur n'est nécessaire.
+  ///
+  /// Retourne un Future qui se termine dès la première donnée reçue (utile
+  /// pour le pull-to-refresh), sans se désabonner : l'écoute reste active
+  /// pour les mises à jour suivantes.
+  Future<void> load(String userId) {
+    if (_currentUserId == userId && _sub != null) {
+      return Future.value(); // déjà abonné, rien à refaire
+    }
+    _currentUserId = userId;
     _loading = true;
-    _error = null;
     notifyListeners();
 
+    final completer = Completer<void>();
+    _sub?.cancel();
     _sub = _firestore
         .collection('clients')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .listen(
       (snapshot) {
-        _clients = snapshot.docs.map((d) => AtelierClient.fromMap(d.id, d.data())).toList();
+        _clients = snapshot.docs
+            .map((d) => AtelierClient.fromMap(d.id, d.data()))
+            .toList();
+        _clients.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _loading = false;
         _error = null;
         notifyListeners();
+        if (!completer.isCompleted) completer.complete();
       },
       onError: (e) {
-        _error = e.toString();
+        _error = friendlyFirestoreError(e);
         _loading = false;
         notifyListeners();
+        if (!completer.isCompleted) completer.complete();
       },
     );
-  }
-
-  /// Arrête l'écoute (utile lors de la déconnexion)
-  void stop() {
-    _sub?.cancel();
-    _sub = null;
-    _clients = [];
-    notifyListeners();
+    return completer.future;
   }
 
   Future<String?> addClient(AtelierClient client) async {
     try {
       await _firestore.collection('clients').add(client.toInsertMap());
-      // Plus besoin de manipuler _clients manuellement, snapshots() s'en charge !
-      return null;
+      return null; // l'écoute temps réel met à jour _clients automatiquement
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 
@@ -76,21 +85,16 @@ class ClientsProvider extends ChangeNotifier {
       'photo_url': 'photoUrl',
     };
     final mapped = {
-      for (final entry in changes.entries) (keyMap[entry.key] ?? entry.key): entry.value,
+      for (final entry in changes.entries)
+        (keyMap[entry.key] ?? entry.key): entry.value,
     };
     mapped['updatedAt'] = FieldValue.serverTimestamp();
 
     try {
-      final docRef = _firestore.collection('clients').doc(id);
-      await docRef.update(mapped);
-      final fresh = await docRef.get();
-      final updated = AtelierClient.fromMap(fresh.id, fresh.data()!);
-      final idx = _clients.indexWhere((c) => c.id == id);
-      if (idx != -1) _clients[idx] = updated;
-      notifyListeners();
+      await _firestore.collection('clients').doc(id).update(mapped);
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 
@@ -98,51 +102,54 @@ class ClientsProvider extends ChangeNotifier {
       updateClient(clientId, {'photo_url': photoUrl});
 
   /// Supprime le client, ainsi que ses commandes, paiements et fiches
-  /// associés. On ajoute le filtre userId sur chaque requête pour respecter
-  /// les règles de sécurité Firestore.
-  Future<String?> deleteClient(String id) async {
+  /// associés (Firestore ne fait aucune suppression en cascade automatique,
+  /// contrairement aux contraintes ON DELETE CASCADE de Postgres).
+  ///
+  /// ⚠️ `userId` est requis dans CHAQUE requête de recherche des documents à
+  /// supprimer (`where('userId', ...)` en plus de `where('clientId', ...)`),
+  /// pas juste dans la règle de sécurité elle-même. Sans ça, Firestore
+  /// rejette la lecture avec "permission-denied" : ses règles ne peuvent
+  /// autoriser une requête que si elles peuvent prouver, à partir des
+  /// conditions `where` de la requête elle-même, que tous les documents
+  /// retournés respecteront la règle — une requête filtrée seulement par
+  /// `clientId` ne suffit pas à le prouver, même si en pratique tous les
+  /// documents concernés appartiennent bien à l'utilisateur.
+  Future<String?> deleteClient(String id, String userId) async {
     try {
-      final client = byId(id);
-      if (client == null) return 'Client introuvable';
-      final userId = client.userId;
+      final batch = _firestore.batch();
 
-      // 1. Supprimer les commandes (et leurs paiements)
       final commandes = await _firestore
           .collection('commandes')
           .where('userId', isEqualTo: userId)
           .where('clientId', isEqualTo: id)
           .get();
-
-      for (final commande in commandes.docs) {
-        final paiements = await _firestore
-            .collection('paiements')
-            .where('userId', isEqualTo: userId)
-            .where('commandeId', isEqualTo: commande.id)
-            .get();
-        for (final p in paiements.docs) {
-          await p.reference.delete();
-        }
-        await commande.reference.delete();
+      for (final c in commandes.docs) {
+        batch.delete(c.reference);
       }
 
-      // 2. Supprimer les fiches
+      final paiements = await _firestore
+          .collection('paiements')
+          .where('userId', isEqualTo: userId)
+          .where('clientId', isEqualTo: id)
+          .get();
+      for (final p in paiements.docs) {
+        batch.delete(p.reference);
+      }
+
       final fiches = await _firestore
           .collection('fiches')
           .where('userId', isEqualTo: userId)
           .where('clientId', isEqualTo: id)
           .get();
       for (final f in fiches.docs) {
-        await f.reference.delete();
+        batch.delete(f.reference);
       }
 
-      // 3. Supprimer le client lui-même
-      await _firestore.collection('clients').doc(id).delete();
-
-      _clients.removeWhere((c) => c.id == id);
-      notifyListeners();
+      batch.delete(_firestore.collection('clients').doc(id));
+      await batch.commit();
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 

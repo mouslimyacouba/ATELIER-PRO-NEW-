@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/connectivity_banner.dart';
 import '../../core/theme.dart';
 
 class AppShell extends StatelessWidget {
@@ -25,11 +26,18 @@ class AppShell extends StatelessWidget {
     final currentIndex = _currentIndex(context);
 
     return Scaffold(
-      body: SafeArea(child: child),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const ConnectivityBanner(),
+            Expanded(child: child),
+          ],
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (i) => context.go(_tabs[i].$1),
-        backgroundColor: Colors.white,
+        backgroundColor: AtelierProColors.surfaceContainer,
         indicatorColor: AtelierProColors.secondaryContainer,
         destinations: [
           for (final tab in _tabs)

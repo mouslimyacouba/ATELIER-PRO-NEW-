@@ -1,9 +1,13 @@
+import 'dart:async';
+import '../core/firestore_errors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/fiche_mesure.dart';
 
 class FichesMesuresProvider extends ChangeNotifier {
   final _firestore = FirebaseFirestore.instance;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
+  String? _currentUserId;
 
   List<FicheMesure> _fiches = [];
   bool _loading = false;
@@ -16,34 +20,56 @@ class FichesMesuresProvider extends ChangeNotifier {
   List<FicheMesure> forClient(String clientId) =>
       _fiches.where((f) => f.clientId == clientId).toList();
 
-  Future<void> load(String userId) async {
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  /// S'abonne en temps réel aux fiches de cet utilisateur — voir
+  /// ClientsProvider.load pour le détail du comportement hors ligne
+  /// (identique ici).
+  Future<void> load(String userId) {
+    if (_currentUserId == userId && _sub != null) {
+      return Future.value();
+    }
+    _currentUserId = userId;
     _loading = true;
     notifyListeners();
-    try {
-      final snapshot = await _firestore
-          .collection('fiches')
-          .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .get();
-      _fiches = snapshot.docs.map((d) => FicheMesure.fromMap(d.id, d.data())).toList();
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
+
+    final completer = Completer<void>();
+    _sub?.cancel();
+    _sub = _firestore
+        .collection('fiches')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .listen(
+      (snapshot) {
+        _fiches = snapshot.docs
+            .map((d) => FicheMesure.fromMap(d.id, d.data()))
+            .toList();
+        _fiches.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        _loading = false;
+        _error = null;
+        notifyListeners();
+        if (!completer.isCompleted) completer.complete();
+      },
+      onError: (e) {
+        _error = friendlyFirestoreError(e);
+        _loading = false;
+        notifyListeners();
+        if (!completer.isCompleted) completer.complete();
+      },
+    );
+    return completer.future;
   }
 
   Future<String?> addFiche(FicheMesure fiche) async {
     try {
-      final docRef = await _firestore.collection('fiches').add(fiche.toInsertMap());
-      final fresh = await docRef.get();
-      _fiches.insert(0, FicheMesure.fromMap(fresh.id, fresh.data()!));
-      notifyListeners();
+      await _firestore.collection('fiches').add(fiche.toInsertMap());
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 
@@ -51,27 +77,19 @@ class FichesMesuresProvider extends ChangeNotifier {
     final mapped = Map<String, dynamic>.from(changes);
     mapped['updatedAt'] = FieldValue.serverTimestamp();
     try {
-      final docRef = _firestore.collection('fiches').doc(id);
-      await docRef.update(mapped);
-      final fresh = await docRef.get();
-      final updated = FicheMesure.fromMap(fresh.id, fresh.data()!);
-      final idx = _fiches.indexWhere((f) => f.id == id);
-      if (idx != -1) _fiches[idx] = updated;
-      notifyListeners();
+      await _firestore.collection('fiches').doc(id).update(mapped);
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 
   Future<String?> deleteFiche(String id) async {
     try {
       await _firestore.collection('fiches').doc(id).delete();
-      _fiches.removeWhere((f) => f.id == id);
-      notifyListeners();
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 

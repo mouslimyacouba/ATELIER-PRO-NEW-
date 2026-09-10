@@ -59,25 +59,6 @@ class OrderDetailScreen extends StatefulWidget {
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
-  List<AtelierPayment> _payments = [];
-  bool _loadingPayments = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPayments();
-  }
-
-  Future<void> _loadPayments() async {
-    setState(() => _loadingPayments = true);
-    final payments = await context.read<OrdersProvider>().paymentsForOrder(widget.orderId);
-    if (!mounted) return;
-    setState(() {
-      _payments = payments;
-      _loadingPayments = false;
-    });
-  }
-
   Future<void> _addPayment(AtelierOrder order) async {
     final amountCtrl = TextEditingController();
     String method = 'especes';
@@ -102,7 +83,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               children: [
                 const Text('Enregistrer un paiement', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text('Reste dû : ${_money.format(order.remaining)}', style: const TextStyle(color: Colors.black54)),
+                Text('Reste dû : ${_money.format(order.remaining)}', style: const TextStyle(color: AtelierProColors.onSurfaceVariant)),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: amountCtrl,
@@ -127,7 +108,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const Text(
                   "L'encaissement automatique par mobile money (iPayMoney) arrive dans une prochaine version. "
                   "Pour l'instant, saisissez le paiement manuellement après réception.",
-                  style: TextStyle(fontSize: 12, color: Colors.black45),
+                  style: TextStyle(fontSize: 12, color: AtelierProColors.onSurfaceMuted),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
@@ -157,12 +138,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
     );
 
-    if (saved == true) _loadPayments();
+    // La liste de paiements se met à jour toute seule (écoute temps réel),
+    // on confirme juste visuellement que l'enregistrement a réussi.
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Paiement enregistré')));
+    }
   }
 
   Future<void> _shareReceipt(AtelierOrder order, AtelierClient? client) async {
     final atelier = context.read<AtelierProvider>().atelier;
-    final text = _buildReceiptText(atelier: atelier, client: client, order: order, payments: _payments);
+    final payments = context.read<OrdersProvider>().paymentsForOrder(order.id);
+    final text = _buildReceiptText(atelier: atelier, client: client, order: order, payments: payments);
     await Share.share(text, subject: 'Reçu - ${client?.nomComplet ?? ''}');
   }
 
@@ -174,7 +160,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       return;
     }
     final atelier = context.read<AtelierProvider>().atelier;
-    final text = _buildReceiptText(atelier: atelier, client: client, order: order, payments: _payments);
+    final payments = context.read<OrdersProvider>().paymentsForOrder(order.id);
+    final text = _buildReceiptText(atelier: atelier, client: client, order: order, payments: payments);
     await openWhatsApp(client.telephone!, message: text);
   }
 
@@ -301,6 +288,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget build(BuildContext context) {
     final order = context.watch<OrdersProvider>().byId(widget.orderId);
     final client = order == null ? null : context.watch<ClientsProvider>().byId(order.clientId);
+    final payments = order == null ? <AtelierPayment>[] : context.watch<OrdersProvider>().paymentsForOrder(order.id);
 
     if (order == null) {
       return const Scaffold(body: AtelierSpinner());
@@ -335,12 +323,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           const SizedBox(height: 6),
           Text(order.description, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(client?.nomComplet ?? 'Client', style: TextStyle(color: Colors.black.withValues(alpha: 0.6))),
+          Text(client?.nomComplet ?? 'Client', style: TextStyle(color: AtelierProColors.onSurfaceVariant)),
           if (order.dateEcheance != null) ...[
             const SizedBox(height: 4),
             Text(
               'Livraison prévue : ${DateFormat('dd/MM/yyyy').format(order.dateEcheance!)}',
-              style: const TextStyle(color: Colors.black54, fontSize: 13),
+              style: const TextStyle(color: AtelierProColors.onSurfaceVariant, fontSize: 13),
             ),
           ],
           const SizedBox(height: 16),
@@ -433,11 +421,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   onSelected: (_) => context.read<OrdersProvider>().updateStatus(order.id, status),
                   selectedColor: status.color.withValues(alpha: 0.15),
                   labelStyle: TextStyle(
-                    color: order.status == status ? status.color : Colors.black87,
+                    color: order.status == status ? status.color : AtelierProColors.onSurfaceVariant,
                     fontWeight: order.status == status ? FontWeight.w700 : FontWeight.w400,
                   ),
-                  backgroundColor: Colors.white,
-                  side: BorderSide(color: order.status == status ? status.color : Colors.black12),
+                  backgroundColor: AtelierProColors.surfaceContainer,
+                  side: BorderSide(color: order.status == status ? status.color : AtelierProColors.outlineVariant),
                 ),
             ],
           ),
@@ -454,15 +442,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
             ],
           ),
-          if (_loadingPayments)
-            const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: AtelierSpinner())
-          else if (_payments.isEmpty)
+          if (payments.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(child: Text('Aucun paiement enregistré')),
             )
           else
-            for (final p in _payments)
+            for (final p in payments)
               Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(

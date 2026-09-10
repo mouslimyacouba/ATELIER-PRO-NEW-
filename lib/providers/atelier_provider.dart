@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../core/firestore_errors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ class AtelierProvider extends ChangeNotifier {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
   StreamSubscription<User?>? _authSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _atelierSub;
 
   Atelier? _atelier;
   bool _loading = true;
@@ -18,54 +20,50 @@ class AtelierProvider extends ChangeNotifier {
   String? get error => _error;
 
   AtelierProvider() {
-    // Charge (ou recharge) l'atelier dès qu'un utilisateur se connecte ;
-    // réinitialise à la déconnexion. Évite d'avoir à appeler
-    // loadForCurrentUser() manuellement depuis chaque écran.
+    // Écoute en temps réel dès qu'un utilisateur se connecte ; se réabonne
+    // à chaque changement d'utilisateur, se désabonne à la déconnexion.
+    // Avantage mode hors-ligne : Firestore sert immédiatement la dernière
+    // valeur connue depuis le cache local si le réseau est indisponible,
+    // puis met à jour automatiquement dès que la synchro reprend — pas
+    // besoin de bouton "recharger".
     if (_auth.currentUser != null) {
-      loadForCurrentUser();
+      _listen(_auth.currentUser!.uid);
     } else {
       _loading = false;
     }
     _authSub = _auth.authStateChanges().listen((user) {
       if (user != null) {
-        loadForCurrentUser();
+        _listen(user.uid);
       } else {
         reset();
       }
     });
   }
 
+  void _listen(String userId) {
+    _loading = true;
+    notifyListeners();
+    _atelierSub?.cancel();
+    _atelierSub = _firestore.collection('ateliers').doc(userId).snapshots().listen(
+      (doc) {
+        _atelier = doc.exists ? Atelier.fromMap(doc.id, doc.data()!) : null;
+        _loading = false;
+        _error = null;
+        notifyListeners();
+      },
+      onError: (e) {
+        _error = friendlyFirestoreError(e);
+        _loading = false;
+        notifyListeners();
+      },
+    );
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();
+    _atelierSub?.cancel();
     super.dispose();
-  }
-
-  // L'atelier est stocké avec l'UID de l'utilisateur comme ID de document
-  // (collection('ateliers').doc(uid)) : relation 1-pour-1 directe, pas
-  // besoin de requête ni de table de jointure séparée.
-  Future<void> loadForCurrentUser() async {
-    final userId = _auth.currentUser?.uid;
-    if (userId == null) {
-      _atelier = null;
-      _loading = false;
-      notifyListeners();
-      return;
-    }
-
-    _loading = true;
-    notifyListeners();
-
-    try {
-      final doc = await _firestore.collection('ateliers').doc(userId).get();
-      _atelier = doc.exists ? Atelier.fromMap(doc.id, doc.data()!) : null;
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
   }
 
   Future<String?> createAtelier({
@@ -79,8 +77,7 @@ class AtelierProvider extends ChangeNotifier {
 
     try {
       final now = FieldValue.serverTimestamp();
-      final docRef = _firestore.collection('ateliers').doc(userId);
-      await docRef.set({
+      await _firestore.collection('ateliers').doc(userId).set({
         'nomAtelier': nomAtelier,
         'specialite': specialite,
         'telephone': telephone,
@@ -89,12 +86,12 @@ class AtelierProvider extends ChangeNotifier {
         'createdAt': now,
         'updatedAt': now,
       });
-      final fresh = await docRef.get();
-      _atelier = Atelier.fromMap(fresh.id, fresh.data()!);
-      notifyListeners();
+      // Pas besoin de mettre à jour `_atelier` manuellement : l'écoute
+      // temps réel (_listen) reçoit ce changement automatiquement, y
+      // compris hors ligne (écriture locale reflétée immédiatement).
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 
@@ -113,14 +110,10 @@ class AtelierProvider extends ChangeNotifier {
     mapped['updatedAt'] = FieldValue.serverTimestamp();
 
     try {
-      final docRef = _firestore.collection('ateliers').doc(_atelier!.id);
-      await docRef.update(mapped);
-      final fresh = await docRef.get();
-      _atelier = Atelier.fromMap(fresh.id, fresh.data()!);
-      notifyListeners();
+      await _firestore.collection('ateliers').doc(_atelier!.id).update(mapped);
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 
@@ -137,15 +130,19 @@ class AtelierProvider extends ChangeNotifier {
     final userId = _atelier!.id;
 
     try {
-      for (final collection in ['fiches', 'paiements', 'commandes', 'clients']) {
-        await _deleteAllWhereUserId(collection, userId);
-      }
+      // Pas de contrainte de clé étrangère côté Firestore (contrairement à
+      // Postgres) donc aucune dépendance d'ordre entre ces 4 collections —
+      // on les supprime en parallèle plutôt que l'une après l'autre.
+      await Future.wait([
+        _deleteAllWhereUserId('fiches', userId),
+        _deleteAllWhereUserId('paiements', userId),
+        _deleteAllWhereUserId('commandes', userId),
+        _deleteAllWhereUserId('clients', userId),
+      ]);
       await _firestore.collection('ateliers').doc(userId).delete();
-      _atelier = null;
-      notifyListeners();
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyFirestoreError(e);
     }
   }
 
@@ -162,6 +159,7 @@ class AtelierProvider extends ChangeNotifier {
   }
 
   void reset() {
+    _atelierSub?.cancel();
     _atelier = null;
     _loading = false;
     notifyListeners();

@@ -8,7 +8,6 @@ enum TypeAtelier {
   couture,
   menuiserie,
   mecanique,
-  cordonnerie,
   maconnerie,
   bijouterie,
   coiffure,
@@ -22,8 +21,6 @@ enum TypeAtelier {
         return 'Menuiserie';
       case TypeAtelier.mecanique:
         return 'Mécanique (auto/moto)';
-      case TypeAtelier.cordonnerie:
-        return 'Cordonnerie';
       case TypeAtelier.maconnerie:
         return 'Maçonnerie';
       case TypeAtelier.bijouterie:

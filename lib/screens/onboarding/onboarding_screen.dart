@@ -38,7 +38,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final result = await context.read<AtelierProvider>().createAtelier(
           nomAtelier: _nomCtrl.text.trim(),
           specialite: _typeAtelier.dbValue,
-          telephone: _telephoneCtrl.text.trim().isEmpty ? null : _telephoneCtrl.text.trim(),
+          telephone: _telephoneCtrl.text.trim().isEmpty
+              ? null
+              : _telephoneCtrl.text.trim(),
           ville: _villeCtrl.text.trim().isEmpty ? null : _villeCtrl.text.trim(),
         );
 
@@ -63,7 +65,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 12),
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      width: 82,
+                      height: 82,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 const Text(
                   'Créons votre atelier',
                   style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
@@ -71,38 +84,54 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const SizedBox(height: 4),
                 const Text(
                   "Quelques infos pour démarrer — vous pourrez tout modifier plus tard.",
-                  style: TextStyle(color: Colors.black54),
+                  style: TextStyle(color: AtelierProColors.onSurfaceVariant),
                 ),
                 const SizedBox(height: 28),
                 TextFormField(
                   controller: _nomCtrl,
-                  decoration: const InputDecoration(labelText: "Nom de l'atelier"),
+                  decoration:
+                      const InputDecoration(labelText: "Nom de l'atelier"),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<TypeAtelier>(
                   value: _typeAtelier,
-                  decoration: const InputDecoration(labelText: "Métier de l'atelier"),
+                  decoration:
+                      const InputDecoration(labelText: "Métier de l'atelier"),
                   items: TypeAtelier.values
-                      .map((t) => DropdownMenuItem(value: t, child: Text(t.dbValue)))
+                      .map((t) =>
+                          DropdownMenuItem(value: t, child: Text(t.dbValue)))
                       .toList(),
-                  onChanged: (v) => setState(() => _typeAtelier = v ?? _typeAtelier),
+                  onChanged: (v) =>
+                      setState(() => _typeAtelier = v ?? _typeAtelier),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _telephoneCtrl,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Téléphone (optionnel)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Téléphone (optionnel)',
+                    hintText: '90 00 00 00',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                    if (digits.length != 8) return 'Le numéro doit avoir 8 chiffres';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _villeCtrl,
-                  decoration: const InputDecoration(labelText: 'Ville (optionnel)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Ville (optionnel)'),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: AtelierProColors.rougeAlerte)),
+                  Text(_error!,
+                      style:
+                          const TextStyle(color: AtelierProColors.rougeAlerte)),
                 ],
                 const SizedBox(height: 24),
                 ElevatedButton(
@@ -111,7 +140,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ? const SizedBox(
                           height: 18,
                           width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Créer mon atelier'),
                 ),

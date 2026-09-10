@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../models/client.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/clients_provider.dart';
+import '../../widgets/error_banner.dart';
 import '../../widgets/spinner.dart';
 
 class ClientsScreen extends StatefulWidget {
@@ -73,7 +74,16 @@ class _ClientsScreenState extends State<ClientsScreen> {
               TextFormField(
                 controller: phoneCtrl,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Téléphone'),
+                decoration: const InputDecoration(
+                  labelText: 'Téléphone',
+                  hintText: '90 00 00 00',
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (digits.length != 8) return 'Le numéro doit avoir 8 chiffres';
+                  return null;
+                },
               ),
               const SizedBox(height: 10),
               TextFormField(
@@ -145,6 +155,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
       appBar: AppBar(title: const Text('Clients')),
       body: Column(
         children: [
+          if (clientsProvider.error != null) ErrorBanner(message: clientsProvider.error!),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(

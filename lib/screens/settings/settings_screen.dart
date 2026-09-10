@@ -16,8 +16,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // ⚠️ À personnaliser : numéro WhatsApp du support Zinder Digital.
-  static const _supportPhone = '227XXXXXXXX';
+  static const _supportPhone = '82199929';
 
   String _appVersion = '';
   bool _uploadingLogo = false;
@@ -31,7 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      if (mounted) setState(() => _appVersion = '${info.version} (${info.buildNumber})');
+      if (mounted)
+        setState(() => _appVersion = '${info.version} (${info.buildNumber})');
     } catch (_) {
       // Pas bloquant si indisponible (ex: web debug).
     }
@@ -53,7 +53,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       final error = await context.read<AtelierProvider>().updateLogo(url);
       if (mounted && error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error)));
       }
     } catch (e) {
       if (mounted) {
@@ -93,35 +94,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Modifier mon atelier', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const Text('Modifier mon atelier',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: nomCtrl,
-                  decoration: const InputDecoration(labelText: "Nom de l'atelier"),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
+                  decoration:
+                      const InputDecoration(labelText: "Nom de l'atelier"),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<TypeAtelier>(
                   value: typeAtelier,
-                  decoration: const InputDecoration(labelText: "Métier de l'atelier"),
+                  decoration:
+                      const InputDecoration(labelText: "Métier de l'atelier"),
                   items: TypeAtelier.values
-                      .map((t) => DropdownMenuItem(value: t, child: Text(t.dbValue)))
+                      .map((t) =>
+                          DropdownMenuItem(value: t, child: Text(t.dbValue)))
                       .toList(),
-                  onChanged: (v) => setSheetState(() => typeAtelier = v ?? typeAtelier),
+                  onChanged: (v) =>
+                      setSheetState(() => typeAtelier = v ?? typeAtelier),
                 ),
                 if (typeAtelier != atelier.typeAtelier) ...[
                   const SizedBox(height: 6),
                   Text(
                     "⚠️ Changer de métier modifie les champs proposés pour les prochaines fiches. "
                     "Les fiches déjà créées restent inchangées.",
-                    style: const TextStyle(fontSize: 11, color: Colors.black45),
+                    style: const TextStyle(
+                        fontSize: 11, color: AtelierProColors.onSurfaceMuted),
                   ),
                 ],
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: telephoneCtrl,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Téléphone'),
+                  decoration: const InputDecoration(
+                    labelText: 'Téléphone',
+                    hintText: '90 00 00 00',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                    if (digits.length != 8) return 'Le numéro doit avoir 8 chiffres';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 10),
                 TextFormField(
@@ -132,15 +150,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (!formKey.currentState!.validate()) return;
-                    final error = await context.read<AtelierProvider>().updateAtelier({
+                    final error =
+                        await context.read<AtelierProvider>().updateAtelier({
                       'nom_atelier': nomCtrl.text.trim(),
                       'specialite': typeAtelier.dbValue,
-                      'telephone': telephoneCtrl.text.trim().isEmpty ? null : telephoneCtrl.text.trim(),
-                      'ville': villeCtrl.text.trim().isEmpty ? null : villeCtrl.text.trim(),
+                      'telephone': telephoneCtrl.text.trim().isEmpty
+                          ? null
+                          : telephoneCtrl.text.trim(),
+                      'ville': villeCtrl.text.trim().isEmpty
+                          ? null
+                          : villeCtrl.text.trim(),
                     });
                     if (ctx.mounted) {
                       if (error != null) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(error)));
+                        ScaffoldMessenger.of(ctx)
+                            .showSnackBar(SnackBar(content: Text(error)));
                       } else {
                         Navigator.of(ctx).pop(true);
                       }
@@ -156,7 +180,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Atelier mis à jour')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Atelier mis à jour')));
     }
   }
 
@@ -181,29 +206,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Changer le mot de passe', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('Changer le mot de passe',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               TextFormField(
                 controller: passwordCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Nouveau mot de passe'),
-                validator: (v) => (v == null || v.length < 6) ? '6 caractères minimum' : null,
+                decoration:
+                    const InputDecoration(labelText: 'Nouveau mot de passe'),
+                validator: (v) =>
+                    (v == null || v.length < 6) ? '6 caractères minimum' : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: confirmCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirmer le mot de passe'),
-                validator: (v) => v != passwordCtrl.text ? 'Les mots de passe ne correspondent pas' : null,
+                decoration: const InputDecoration(
+                    labelText: 'Confirmer le mot de passe'),
+                validator: (v) => v != passwordCtrl.text
+                    ? 'Les mots de passe ne correspondent pas'
+                    : null,
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
-                  final error = await context.read<AuthProvider>().updatePassword(passwordCtrl.text);
+                  final error = await context
+                      .read<AuthProvider>()
+                      .updatePassword(passwordCtrl.text);
                   if (ctx.mounted) {
                     if (error != null) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(error)));
+                      ScaffoldMessenger.of(ctx)
+                          .showSnackBar(SnackBar(content: Text(error)));
                     } else {
                       Navigator.of(ctx).pop(true);
                     }
@@ -218,7 +252,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mot de passe mis à jour')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mot de passe mis à jour')));
     }
   }
 
@@ -227,12 +262,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Se déconnecter ?'),
-        content: const Text('Tu devras te reconnecter avec ton e-mail et ton mot de passe.'),
+        content: const Text(
+            'Tu devras te reconnecter avec ton e-mail et ton mot de passe.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Annuler')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Se déconnecter', style: TextStyle(color: AtelierProColors.rougeAlerte)),
+            child: const Text('Se déconnecter',
+                style: TextStyle(color: AtelierProColors.rougeAlerte)),
           ),
         ],
       ),
@@ -243,7 +282,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _contactSupport() async {
-    await openWhatsApp(_supportPhone, message: 'Bonjour, j\'ai besoin d\'aide avec AtelierPro Mobile.');
+    await openWhatsApp(_supportPhone,
+        message: 'Bonjour, j\'ai besoin d\'aide avec AtelierPro Mobile.');
   }
 
   Future<void> _confirmDeleteAccount() async {
@@ -256,10 +296,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'définitivement supprimés. Cette action est irréversible.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Annuler')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Supprimer', style: TextStyle(color: AtelierProColors.rougeAlerte)),
+            child: const Text('Supprimer',
+                style: TextStyle(color: AtelierProColors.rougeAlerte)),
           ),
         ],
       ),
@@ -272,7 +315,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // partent en cascade (contraintes ON DELETE CASCADE côté base).
       final error = await context.read<AtelierProvider>().deleteAtelier();
       if (error != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error)));
       }
     }
     if (!mounted) return;
@@ -307,8 +351,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     CircleAvatar(
                       radius: 22,
-                      backgroundColor: AtelierProColors.terracotta.withValues(alpha: 0.12),
-                      backgroundImage: (atelier?.logoUrl != null) ? NetworkImage(atelier!.logoUrl!) : null,
+                      backgroundColor:
+                          AtelierProColors.terracotta.withValues(alpha: 0.12),
+                      backgroundImage: (atelier?.logoUrl != null)
+                          ? NetworkImage(atelier!.logoUrl!)
+                          : null,
                       child: _uploadingLogo
                           ? const SizedBox(
                               height: 16,
@@ -316,7 +363,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : (atelier?.logoUrl == null
-                              ? const Icon(Icons.storefront, color: AtelierProColors.terracotta)
+                              ? const Icon(
+                                  Icons.storefront,
+                                  color: AtelierProColors.terracotta,
+                                  size: 26,
+                                )
                               : null),
                     ),
                     Positioned(
@@ -328,7 +379,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: AtelierProColors.terracotta,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.camera_alt, size: 10, color: Colors.white),
+                        child: const Icon(Icons.camera_alt,
+                            size: 10, color: Colors.white),
                       ),
                     ),
                   ],
@@ -377,7 +429,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Icon(Icons.payments_outlined, color: AtelierProColors.terracotta),
+                  Icon(Icons.payments_outlined,
+                      color: AtelierProColors.terracotta),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -397,6 +450,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: const Icon(Icons.help_outline),
                   title: const Text('Aide / Support (WhatsApp)'),
+                  subtitle: const Text('Numéro : 82199929'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _contactSupport,
                 ),
@@ -414,7 +468,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'ne sont accessibles qu\'à ton compte. Aucune donnée n\'est partagée avec des tiers.',
                       ),
                       actions: [
-                        TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Fermer')),
+                        TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            child: const Text('Fermer')),
                       ],
                     ),
                   ),
@@ -426,23 +482,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           OutlinedButton.icon(
             onPressed: _confirmSignOut,
             icon: const Icon(Icons.logout, color: AtelierProColors.rougeAlerte),
-            label: const Text('Se déconnecter', style: TextStyle(color: AtelierProColors.rougeAlerte)),
-            style: OutlinedButton.styleFrom(side: const BorderSide(color: AtelierProColors.rougeAlerte)),
+            label: const Text('Se déconnecter',
+                style: TextStyle(color: AtelierProColors.rougeAlerte)),
+            style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AtelierProColors.rougeAlerte)),
           ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: _confirmDeleteAccount,
             child: const Text(
               'Supprimer mes données et mon compte',
-              style: TextStyle(color: Colors.black38, fontSize: 12),
+              style: TextStyle(
+                  color: AtelierProColors.onSurfaceMuted, fontSize: 12),
             ),
           ),
           if (_appVersion.isNotEmpty) ...[
             const SizedBox(height: 24),
             Center(
               child: Text(
-                'AtelierPro Mobile · v$_appVersion',
-                style: const TextStyle(fontSize: 12, color: Colors.black38),
+                'AtelierPro · v$_appVersion',
+                style: const TextStyle(
+                    fontSize: 12, color: AtelierProColors.onSurfaceMuted),
               ),
             ),
           ],

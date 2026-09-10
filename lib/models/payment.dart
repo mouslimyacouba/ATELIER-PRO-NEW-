@@ -4,6 +4,7 @@ class AtelierPayment {
   final String id;
   final String userId;
   final String commandeId;
+  final String clientId; // dénormalisé — évite une requête par commande pour l'historique client
   final double montant;
   final String mode;
   final DateTime datePaiement;
@@ -13,6 +14,7 @@ class AtelierPayment {
     required this.id,
     required this.userId,
     required this.commandeId,
+    required this.clientId,
     required this.montant,
     required this.mode,
     required this.datePaiement,
@@ -38,6 +40,7 @@ class AtelierPayment {
       id: id,
       userId: map['userId'] as String,
       commandeId: map['commandeId'] as String,
+      clientId: map['clientId'] as String? ?? '',
       montant: (map['montant'] as num).toDouble(),
       mode: (map['mode'] as String?) ?? 'especes',
       datePaiement: (map['datePaiement'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -49,10 +52,11 @@ class AtelierPayment {
     return {
       'userId': userId,
       'commandeId': commandeId,
+      'clientId': clientId,
       'montant': montant,
       'mode': mode,
-      'datePaiement': FieldValue.serverTimestamp(),
-      'createdAt': FieldValue.serverTimestamp(),
+      'datePaiement': Timestamp.fromDate(DateTime.now()), // idem : évite de disparaître de la liste triée
+      'createdAt': Timestamp.fromDate(DateTime.now()), // pas serverTimestamp() : sinon disparaît des listes triées jusqu'à confirmation serveur
     };
   }
 }

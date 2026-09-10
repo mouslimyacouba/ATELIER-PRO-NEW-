@@ -36,6 +36,10 @@ ios/.symlinks/
 .idea/
 .vscode/
 *.iml
+.artifacts/
+
+# Logs
+*.log
 
 # macOS
 .DS_Store

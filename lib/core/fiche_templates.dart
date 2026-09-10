@@ -62,26 +62,6 @@ final Map<TypeAtelier, FicheTemplate> ficheTemplates = {
       ChampFiche(id: 'description_panne', label: 'Description de la panne', typeChamp: TypeChamp.texte),
     ],
   ),
-  TypeAtelier.cordonnerie: const FicheTemplate(
-    typeAtelier: TypeAtelier.cordonnerie,
-    nomFiche: 'Fiche chaussure',
-    champs: [
-      ChampFiche(id: 'pointure', label: 'Pointure', typeChamp: TypeChamp.nombre),
-      ChampFiche(
-        id: 'type_chaussure',
-        label: 'Type de chaussure',
-        typeChamp: TypeChamp.liste,
-        options: ['Ville', 'Sport', 'Sandale', 'Botte', 'Autre'],
-      ),
-      ChampFiche(
-        id: 'matiere',
-        label: 'Matière',
-        typeChamp: TypeChamp.liste,
-        options: ['Cuir', 'Synthétique', 'Tissu'],
-      ),
-      ChampFiche(id: 'reparation_demandee', label: 'Réparation demandée', typeChamp: TypeChamp.texte),
-    ],
-  ),
   TypeAtelier.maconnerie: const FicheTemplate(
     typeAtelier: TypeAtelier.maconnerie,
     nomFiche: 'Fiche chantier',
@@ -123,7 +103,6 @@ final Map<TypeAtelier, FicheTemplate> ficheTemplates = {
         obligatoire: true,
         options: ['Coupe', 'Tresses', 'Défrisage', 'Coloration', 'Soin', 'Autre'],
       ),
-      ChampFiche(id: 'longueur_cheveux', label: 'Longueur cheveux', typeChamp: TypeChamp.texte),
       ChampFiche(id: 'produits_utilises', label: 'Produits utilisés', typeChamp: TypeChamp.texte),
     ],
   ),

@@ -45,7 +45,7 @@ class AtelierClient {
       'adresse': adresse,
       'notes': notes,
       'photoUrl': photoUrl,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': Timestamp.fromDate(DateTime.now()), // pas serverTimestamp() : sinon disparaît des listes triées jusqu'à confirmation serveur
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }

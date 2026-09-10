@@ -1,4 +1,4 @@
-package com.zinderdigital.atelierpro_mobile
+package com.zinderdigital.atelierpro
 
 import io.flutter.embedding.android.FlutterActivity
 

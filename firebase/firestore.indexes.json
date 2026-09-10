@@ -28,7 +28,7 @@
       "collectionGroup": "paiements",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "commandeId", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "datePaiement", "order": "DESCENDING" }
       ]
     }

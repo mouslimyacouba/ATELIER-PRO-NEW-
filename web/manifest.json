@@ -1,6 +1,6 @@
 {
-    "name": "atelierpro_mobile",
-    "short_name": "atelierpro_mobile",
+    "name": "Atelier Pro",
+    "short_name": "Atelier Pro",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

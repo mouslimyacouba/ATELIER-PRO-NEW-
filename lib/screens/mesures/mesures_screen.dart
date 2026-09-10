@@ -9,6 +9,7 @@ import '../../models/fiche_template.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/clients_provider.dart';
 import '../../providers/fiches_mesures_provider.dart';
+import '../../widgets/error_banner.dart';
 import '../../widgets/spinner.dart';
 
 final _date = DateFormat('dd/MM/yyyy');
@@ -226,46 +227,50 @@ class _MesuresScreenState extends State<MesuresScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(template.nomFiche)),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          final userId = context.read<AtelierProvider>().atelier?.userId;
-          if (userId != null) await context.read<FichesMesuresProvider>().load(userId);
-        },
-        child: fichesProvider.loading && fichesProvider.fiches.isEmpty
-            ? ListView(children: const [SizedBox(height: 200), AtelierSpinner()])
-            : fichesProvider.fiches.isEmpty
-                ? ListView(
-                    children: [
-                      const SizedBox(height: 120),
-                      Center(child: Text('Aucune ${template.nomFiche.toLowerCase()}')),
-                    ],
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: fichesProvider.fiches.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, i) {
-                      final fiche = fichesProvider.fiches[i];
-                      final client = clientsProvider.byId(fiche.clientId);
-                      return Card(
-                        child: ListTile(
-                          onTap: () => _openForm(existing: fiche),
-                          leading: const CircleAvatar(
-                            backgroundColor: Color(0x1F442A22),
-                            child: Icon(Icons.description_outlined, color: AtelierProColors.terracotta, size: 20),
-                          ),
-                          title: Text(fiche.titre),
-                          subtitle: Text('${client?.nomComplet ?? 'Client'} · ${_date.format(fiche.updatedAt)}'),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'delete') _confirmDelete(fiche);
-                            },
+      body: Column(
+        children: [
+          if (fichesProvider.error != null) ErrorBanner(message: fichesProvider.error!),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                final userId = context.read<AtelierProvider>().atelier?.userId;
+                if (userId != null) await context.read<FichesMesuresProvider>().load(userId);
+              },
+              child: fichesProvider.loading && fichesProvider.fiches.isEmpty
+                  ? ListView(children: const [SizedBox(height: 200), AtelierSpinner()])
+                  : fichesProvider.fiches.isEmpty
+                      ? ListView(
+                          children: [
+                            const SizedBox(height: 120),
+                            Center(child: Text('Aucune ${template.nomFiche.toLowerCase()}')),
+                          ],
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: fichesProvider.fiches.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (context, i) {
+                            final fiche = fichesProvider.fiches[i];
+                            final client = clientsProvider.byId(fiche.clientId);
+                            return Card(
+                              child: ListTile(
+                                onTap: () => _openForm(existing: fiche),
+                                leading: const CircleAvatar(
+                                  backgroundColor: Color(0x1F442A22),
+                                  child: Icon(Icons.description_outlined, color: AtelierProColors.terracotta, size: 20),
+                                ),
+                                title: Text(fiche.titre),
+                                subtitle: Text('${client?.nomComplet ?? 'Client'} · ${_date.format(fiche.updatedAt)}'),
+                                trailing: PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    if (value == 'delete') _confirmDelete(fiche);
+                                  },
                             itemBuilder: (context) => [
                               PopupMenuItem(
                                 value: 'info',
                                 enabled: false,
                                 child: Text('${fiche.mesures.length} champs',
-                                    style: const TextStyle(fontSize: 12, color: Colors.black45)),
+                                    style: const TextStyle(fontSize: 12, color: AtelierProColors.onSurfaceMuted)),
                               ),
                               const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
                             ],
@@ -274,6 +279,9 @@ class _MesuresScreenState extends State<MesuresScreen> {
                       );
                     },
                   ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: clientsProvider.clients.isEmpty

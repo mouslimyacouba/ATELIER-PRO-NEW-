@@ -1,54 +1,81 @@
+import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 /// Centralise l'upload de photos vers Firebase Storage.
+///
+/// ⚠️ Deux pré-requis côté Firebase Console, sans quoi TOUT upload échoue :
+///   1. Storage > "Commencer" doit avoir été cliqué au moins une fois — le
+///      bucket ne se crée pas tout seul, contrairement à ce qu'on pourrait
+///      penser (même situation que Firestore Database au tout début).
+///   2. Storage > Rules doit contenir le contenu de firebase/storage.rules
+///      (les règles par défaut bloquent tout : "allow read, write: if false").
+/// Sans ces deux étapes, `putFile()` échoue silencieusement dans certains
+/// cas, et l'erreur qui remonte ensuite ([firebase_storage/object-not-found]
+/// sur le getDownloadURL() qui suit) est trompeuse — elle ne dit pas "bucket
+/// manquant", juste "objet introuvable".
 class StorageService {
   static final _storage = FirebaseStorage.instance;
   static final _picker = ImagePicker();
 
-  /// Ouvre le sélecteur d'image (galerie) et retourne l'image choisie sous forme de [XFile].
-  static Future<XFile?> pickImage({ImageSource source = ImageSource.gallery}) async {
-    try {
-      final picked = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 80,
-      );
-      return picked;
-    } catch (e) {
-      debugPrint('Erreur pickImage: $e');
-      return null;
-    }
+  /// Ouvre le sélecteur d'image (galerie), compresse légèrement, et retourne
+  /// le fichier choisi. Retourne null si l'utilisateur annule.
+  static Future<File?> pickImage({ImageSource source = ImageSource.gallery}) async {
+    final picked = await _picker.pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 80,
+    );
+    if (picked == null) return null;
+    return File(picked.path);
   }
 
-  /// Upload une image vers `bucket/userId/key.ext`.
-  /// Utilise putData pour une compatibilité maximale (Web/Mobile).
+  /// Upload un fichier vers `bucket/userId/key.ext` (ex: bucket "logos" ou
+  /// "photos" — de simples dossiers de premier niveau dans Firebase Storage,
+  /// pas de vrais "buckets" séparés comme chez Supabase) et retourne l'URL
+  /// de téléchargement. `key` distingue les fichiers d'un même utilisateur
+  /// (ex: l'id du client pour une photo client, ou "logo" pour l'atelier).
   static Future<String> upload({
     required String bucket,
     required String userId,
     required String key,
-    required XFile file,
+    required File file,
   }) async {
+    if (!await file.exists()) {
+      throw Exception('Le fichier image sélectionné est introuvable sur l\'appareil.');
+    }
+
+    // Extension nettoyée : certains chemins retournés par le sélecteur
+    // d'image peuvent contenir des paramètres après l'extension — on ne
+    // garde que des caractères alphanumériques pour éviter un chemin
+    // Firebase Storage invalide.
+    final rawExt = file.path.contains('.') ? file.path.split('.').last : 'jpg';
+    final ext = rawExt.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+    final safeExt = ext.isEmpty ? 'jpg' : ext;
+
+    final ref = _storage.ref('$bucket/$userId/$key.$safeExt');
+
+    late final TaskSnapshot snapshot;
     try {
-      final name = file.name;
-      final ext = name.contains('.') ? name.split('.').last : 'jpg';
-      final ref = _storage.ref().child(bucket).child(userId).child('$key.$ext');
-
-      final Uint8List bytes = await file.readAsBytes();
-
-      // Utilisation de putData qui est supporté sur toutes les plateformes (Web inclu)
-      // On spécifie le contentType pour éviter les problèmes d'affichage/téléchargement
-      final uploadTask = await ref.putData(
-        bytes,
-        SettableMetadata(contentType: 'image/${ext == "jpg" ? "jpeg" : ext}'),
-      );
-
-      return await uploadTask.ref.getDownloadURL();
-    } catch (e) {
-      debugPrint('Erreur StorageService.upload: $e');
+      snapshot = await ref.putFile(file);
+    } on FirebaseException catch (e) {
+      // Erreur la plus fréquente à ce stade : règles Storage non publiées
+      // (unauthorized) ou bucket jamais initialisé — voir note en tête de
+      // fichier. On enrichit le message pour orienter le diagnostic.
+      if (e.code == 'unauthorized' || e.code == 'unknown') {
+        throw Exception(
+          'Envoi refusé (${e.code}). Vérifie que Storage est bien activé et que '
+          'les règles de sécurité (firebase/storage.rules) sont publiées côté Firebase Console.',
+        );
+      }
       rethrow;
     }
+
+    if (snapshot.state != TaskState.success) {
+      throw Exception('L\'envoi ne s\'est pas terminé correctement (état: ${snapshot.state}).');
+    }
+
+    return await ref.getDownloadURL();
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:atelierpro_mobile/main.dart';
+import 'package:atelierpro/main.dart';
 
 void main() {
   testWidgets('AtelierProApp smoke test', (WidgetTester tester) async {
