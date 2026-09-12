@@ -1,4 +1,4 @@
-# AtelierPro Mobile
+# AtelierPro 
 
 Application mobile **open source** (Flutter) de gestion d'atelier pour artisans nigériens
 (couture, menuiserie, mécanique, cordonnerie, maçonnerie, bijouterie, coiffure...) :
