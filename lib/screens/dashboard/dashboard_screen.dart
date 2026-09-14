@@ -98,7 +98,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final progression =
         caDuMois > 0 ? (acomptesDuMois / caDuMois).clamp(0.0, 1.0) : 0.0;
 
-    // Livraisons & urgences : en retard + à venir sous 48h, triées par échéance.
     final urgent = orders.orders.where((o) {
       if (o.dateEcheance == null || o.status == OrderStatus.livre) return false;
       return o.dateEcheance!.difference(now).inHours <= 48;
@@ -106,6 +105,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ..sort((a, b) => a.dateEcheance!.compareTo(b.dateEcheance!));
 
     final recentPayments = orders.payments.take(4).toList();
+
+    final commandesOuvertes =
+        orders.orders.where((o) => o.status != OrderStatus.livre).length;
+    final aLivrerBientot =
+        urgent.where((o) => !o.dateEcheance!.isBefore(now)).length;
+    final commandesEnRetard = orders.enRetard.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -187,6 +192,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                         const SizedBox(height: 20),
+
+                        // Strip "Aujourd'hui"
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AtelierProColors.surfaceContainer,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: AtelierProColors.outlineVariant),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('AUJOURD\'HUI',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                      color: AtelierProColors.onSurfaceVariant)),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _KpiValue(
+                                      value: '$commandesOuvertes',
+                                      label: 'commandes',
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _KpiValue(
+                                      value: '$aLivrerBientot',
+                                      label: 'à livrer',
+                                      color: AtelierProColors.statusPending,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _KpiValue(
+                                      value: '$commandesEnRetard',
+                                      label: 'en retard',
+                                      color: commandesEnRetard > 0
+                                          ? AtelierProColors.statusUrgent
+                                          : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                child: Divider(
+                                    height: 1,
+                                    color: AtelierProColors.outlineVariant),
+                              ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _KpiValue(
+                                      label: 'CA du mois',
+                                      value: _money.format(caDuMois),
+                                      big: true,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _KpiValue(
+                                      label: 'À récupérer',
+                                      value: _money.format(resteDuMois),
+                                      big: true,
+                                      color: AtelierProColors.statusPending,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _KpiValue(
+                                      label: 'Clients',
+                                      value: '${clients.clients.length}',
+                                      big: true,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
 
                         // Carte "Recettes du mois"
                         Container(
@@ -378,7 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                               TextButton(
-                                onPressed: () => context.go('/commandes'),
+                                onPressed: () => context.go('/calendrier'),
                                 child: Text('Voir tout (${urgent.length})'),
                               ),
                             ],
@@ -401,7 +488,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 0.5)),
                               TextButton(
-                                onPressed: () => context.go('/commandes'),
+                                onPressed: () => context.go('/historique/paiements'),
                                 child: const Text('Journal de caisse',
                                     style: TextStyle(fontSize: 12)),
                               ),
@@ -487,6 +574,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Nouvelle commande'),
       ),
+    );
+  }
+}
+
+class _KpiValue extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color? color;
+  final bool big;
+
+  const _KpiValue({
+    required this.value,
+    required this.label,
+    this.color,
+    this.big = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: AtelierProTheme.dataStyle(
+            fontSize: big ? 16 : 20,
+            fontWeight: FontWeight.w800,
+            color: color ?? AtelierProColors.onSurface,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+              fontSize: 11, color: AtelierProColors.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
@@ -648,6 +772,11 @@ class _UrgentOrderCard extends StatelessWidget {
   const _UrgentOrderCard({required this.order, required this.client});
 
   @override
+  Widget_build(BuildContext context) {
+    return const SizedBox.shrink();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final overdue = order.dateEcheance!.isBefore(DateTime.now());
     return Card(
@@ -689,7 +818,7 @@ class _UrgentOrderCard extends StatelessWidget {
                 Text('Reste : ${_money.format(order.remaining)}',
                     style: AtelierProTheme.dataStyle(
                         fontSize: 12, color: AtelierProColors.statusPending)),
-              ],
+                ],
             ),
             if (client?.telephone case final telephone?) ...[
               const SizedBox(height: 10),
@@ -703,7 +832,7 @@ class _UrgentOrderCard extends StatelessWidget {
                           const Text('Appeler', style: TextStyle(fontSize: 12)),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => openWhatsApp(telephone),

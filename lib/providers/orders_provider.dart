@@ -4,20 +4,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/order.dart';
 import '../models/payment.dart';
+import '../models/historique_entry.dart';
+import '../core/notification_service.dart';
 
 class OrdersProvider extends ChangeNotifier {
   final _firestore = FirebaseFirestore.instance;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _ordersSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _paymentsSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _historiqueSub;
   String? _currentUserId;
 
   List<AtelierOrder> _orders = [];
   List<AtelierPayment> _payments = [];
+  List<HistoriqueEntry> _historique = [];
   bool _loading = false;
   String? _error;
 
   List<AtelierOrder> get orders => _orders;
   List<AtelierPayment> get payments => _payments;
+  List<HistoriqueEntry> get historique => _historique;
   bool get loading => _loading;
   String? get error => _error;
 
@@ -39,30 +44,27 @@ class OrdersProvider extends ChangeNotifier {
     }).toList();
   }
 
-  /// Paiements d'une commande — simple filtre local (plus de requête réseau
-  /// à chaque ouverture d'écran), car tous les paiements de l'atelier sont
-  /// déjà tenus à jour en mémoire par l'écoute temps réel de `load()`.
   List<AtelierPayment> paymentsForOrder(String orderId) =>
       _payments.where((p) => p.commandeId == orderId).toList();
 
-  /// Tous les paiements d'un client, tous secteurs/commandes confondus —
-  /// utilisé pour la timeline d'activité sur la fiche client. Même principe :
-  /// filtre local, pas de requête réseau.
   List<AtelierPayment> paymentsForClient(String clientId) =>
       _payments.where((p) => p.clientId == clientId).toList();
+
+  List<HistoriqueEntry> historiqueForOrder(String orderId) {
+    final list =
+        _historique.where((h) => h.commandeId == orderId).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
 
   @override
   void dispose() {
     _ordersSub?.cancel();
     _paymentsSub?.cancel();
+    _historiqueSub?.cancel();
     super.dispose();
   }
 
-  /// S'abonne en temps réel aux commandes ET aux paiements de cet
-  /// utilisateur. Tenir les paiements en mémoire (plutôt que de les
-  /// requêter à la demande par commande/client) simplifie l'affichage de
-  /// l'historique — qui devient un simple filtre local, toujours à jour
-  /// sans rechargement manuel.
   Future<void> load(String userId) {
     if (_currentUserId == userId && _ordersSub != null) {
       return Future.value();
@@ -84,6 +86,7 @@ class OrdersProvider extends ChangeNotifier {
             .map((d) => AtelierOrder.fromMap(d.id, d.data()))
             .toList();
         _orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        NotificationService.scheduleOrderReminders(_orders);
         _loading = false;
         _error = null;
         notifyListeners();
@@ -117,63 +120,208 @@ class OrdersProvider extends ChangeNotifier {
       },
     );
 
+    _historiqueSub?.cancel();
+    _historiqueSub = _firestore
+        .collection('historique_modifications')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .listen(
+      (snapshot) {
+        _historique = snapshot.docs
+            .map((d) => HistoriqueEntry.fromMap(d.id, d.data()))
+            .toList();
+        notifyListeners();
+      },
+      onError: (e) {
+        _historique = [];
+        notifyListeners();
+      },
+    );
+
     return completer.future;
   }
 
   Future<String?> createOrder(AtelierOrder order) async {
     try {
-      await _firestore.collection('commandes').add(order.toInsertMap());
+      final docRef = _firestore.collection('commandes').doc();
+      final compteurRef = _firestore.collection('compteurs').doc(order.userId);
+
+      await _firestore.runTransaction((transaction) async {
+        final compteurSnap = await transaction.get(compteurRef);
+        int nouveauNumero = 1;
+        if (compteurSnap.exists && compteurSnap.data() != null) {
+          nouveauNumero =
+              (compteurSnap.data()!['dernierNumero'] as num? ?? 0).toInt() + 1;
+        }
+
+        final map = order.toInsertMap();
+        map['numero'] = nouveauNumero;
+
+        transaction.set(
+          compteurRef,
+          {
+            'dernierNumero': nouveauNumero,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+        transaction.set(docRef, map);
+      });
       return null;
     } catch (e) {
       return friendlyFirestoreError(e);
     }
+  }
+
+  Future<void> _enregistrerHistorique({
+    required String userId,
+    required String commandeId,
+    required String champModifie,
+    String? ancienneValeur,
+    String? nouvelleValeur,
+  }) async {
+    if (ancienneValeur == nouvelleValeur) return;
+    await _firestore.collection('historique_modifications').add(
+          HistoriqueEntry(
+            id: '',
+            userId: userId,
+            commandeId: commandeId,
+            champModifie: champModifie,
+            ancienneValeur: ancienneValeur,
+            nouvelleValeur: nouvelleValeur,
+            createdAt: DateTime.now(),
+          ).toInsertMap(),
+        );
   }
 
   Future<String?> updateStatus(String orderId, OrderStatus status) async {
     try {
+      final order = byId(orderId);
       await _firestore.collection('commandes').doc(orderId).update(
           {'statut': status.value, 'updatedAt': FieldValue.serverTimestamp()});
+      if (order != null && order.status != status) {
+        await _enregistrerHistorique(
+          userId: order.userId,
+          commandeId: orderId,
+          champModifie: 'statut',
+          ancienneValeur: order.status.label,
+          nouvelleValeur: status.label,
+        );
+      }
       return null;
     } catch (e) {
       return friendlyFirestoreError(e);
     }
   }
 
-  /// Modifie la description, le montant total et/ou la fiche liée.
-  /// Ne touche pas à `acompte` (géré exclusivement via recordPayment).
   Future<String?> updateOrder(
     String orderId, {
     String? description,
     double? prixTotal,
     DateTime? dateEcheance,
     String? ficheMesureId,
+    String? modeleId,
+    List<Map<String, dynamic>>? etapesSnapshot,
   }) async {
     try {
+      final avant = byId(orderId);
       final changes = <String, dynamic>{
         if (description != null) 'description': description,
         if (prixTotal != null) 'prixTotal': prixTotal,
         if (dateEcheance != null)
           'dateEcheance': Timestamp.fromDate(dateEcheance),
         'ficheId': ficheMesureId,
+        if (modeleId != null) 'modeleId': modeleId,
+        if (etapesSnapshot != null) 'etapesSnapshot': etapesSnapshot,
         'updatedAt': FieldValue.serverTimestamp(),
       };
       await _firestore.collection('commandes').doc(orderId).update(changes);
+
+      if (avant != null) {
+        if (description != null) {
+          await _enregistrerHistorique(
+            userId: avant.userId,
+            commandeId: orderId,
+            champModifie: 'description',
+            ancienneValeur: avant.description,
+            nouvelleValeur: description,
+          );
+        }
+        if (prixTotal != null) {
+          await _enregistrerHistorique(
+            userId: avant.userId,
+            commandeId: orderId,
+            champModifie: 'prixTotal',
+            ancienneValeur: avant.prixTotal.toStringAsFixed(0),
+            nouvelleValeur: prixTotal.toStringAsFixed(0),
+          );
+        }
+        if (dateEcheance != null) {
+          await _enregistrerHistorique(
+            userId: avant.userId,
+            commandeId: orderId,
+            champModifie: 'dateEcheance',
+            ancienneValeur: avant.dateEcheance?.toIso8601String(),
+            nouvelleValeur: dateEcheance.toIso8601String(),
+          );
+        }
+      }
       return null;
     } catch (e) {
       return friendlyFirestoreError(e);
     }
   }
 
-  /// Supprime la commande et ses paiements associés. Les paiements à
-  /// supprimer viennent de la liste déjà en mémoire (`_payments`, tenue à
-  /// jour en temps réel) — pas de requête Firestore nécessaire, donc pas de
-  /// risque de rejet par les règles de sécurité (voir note dans
-  /// ClientsProvider.deleteClient pour le détail de ce piège).
+  Future<String?> toggleEtape(String orderId, String etapeId, bool terminee) async {
+    try {
+      final order = byId(orderId);
+      if (order == null) return null;
+      final etapes = List<Map<String, dynamic>>.from(order.etapesSnapshot ?? []);
+      final index = etapes.indexWhere((e) => e['id'] == etapeId);
+      if (index == -1) return null;
+      etapes[index] = {...etapes[index], 'terminee': terminee};
+      await _firestore.collection('commandes').doc(orderId).update({
+        'etapesSnapshot': etapes,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (e) {
+      return friendlyFirestoreError(e);
+    }
+  }
+
+  Future<String?> addPhoto(String orderId, String url) async {
+    try {
+      await _firestore.collection('commandes').doc(orderId).update({
+        'photoUrls': FieldValue.arrayUnion([url]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (e) {
+      return friendlyFirestoreError(e);
+    }
+  }
+
+  Future<String?> removePhoto(String orderId, String url) async {
+    try {
+      await _firestore.collection('commandes').doc(orderId).update({
+        'photoUrls': FieldValue.arrayRemove([url]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (e) {
+      return friendlyFirestoreError(e);
+    }
+  }
+
   Future<String?> deleteOrder(String orderId) async {
     try {
       final batch = _firestore.batch();
       for (final p in _payments.where((p) => p.commandeId == orderId)) {
         batch.delete(_firestore.collection('paiements').doc(p.id));
+      }
+      for (final h in _historique.where((h) => h.commandeId == orderId)) {
+        batch.delete(_firestore.collection('historique_modifications').doc(h.id));
       }
       batch.delete(_firestore.collection('commandes').doc(orderId));
       await batch.commit();
@@ -183,11 +331,6 @@ class OrdersProvider extends ChangeNotifier {
     }
   }
 
-  /// Enregistre un paiement manuel (espèces, ou mobile money saisi à la main
-  /// tant que l'intégration automatique iPayMoney n'est pas branchée ici).
-  /// Écriture atomique par lot (WriteBatch) : la création du paiement et
-  /// l'incrément de `acompte` sur la commande réussissent ou échouent
-  /// ensemble, en un seul aller-retour réseau au lieu de deux séquentiels.
   Future<String?> recordPayment({
     required String orderId,
     required String userId,

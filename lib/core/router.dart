@@ -16,6 +16,12 @@ import '../screens/orders/new_order_screen.dart';
 import '../screens/orders/order_detail_screen.dart';
 import '../screens/mesures/mesures_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../screens/modeles/modeles_screen.dart';
+import '../screens/modeles/modele_form_screen.dart';
+import '../screens/debug/metier_debug_screen.dart';
+import '../screens/historique/commandes_historique_screen.dart';
+import '../screens/historique/paiements_historique_screen.dart';
+import '../screens/calendrier/calendrier_screen.dart';
 
 GoRouter buildRouter(BuildContext context) {
   final auth = context.read<AuthProvider>();
@@ -32,13 +38,9 @@ GoRouter buildRouter(BuildContext context) {
 
       if (!loggedIn) return loggingIn ? null : '/auth';
 
-      // L'adresse e-mail est une étape bloquante : ne pas laisser l'état de
-      // l'atelier provoquer une seconde redirection pendant cette étape.
       if (!auth.emailVerified) return verifyingEmail ? null : '/verify-email';
       if (loggingIn || verifyingEmail) return '/';
 
-      // Bloque l'accès tant que l'e-mail n'est pas vérifié (sans effet pour
-      // Google/téléphone : auth.emailVerified vaut toujours true pour eux).
       if (loggedIn &&
           !atelierProvider.loading &&
           atelierProvider.atelier == null &&
@@ -63,6 +65,8 @@ GoRouter buildRouter(BuildContext context) {
         routes: [
           GoRoute(
               path: '/', builder: (context, state) => const DashboardScreen()),
+          GoRoute(
+              path: '/debug/metier', builder: (context, state) => const MetierDebugScreen()),
           GoRoute(
               path: '/clients',
               builder: (context, state) => const ClientsScreen()),
@@ -90,6 +94,29 @@ GoRouter buildRouter(BuildContext context) {
           GoRoute(
               path: '/parametres',
               builder: (context, state) => const SettingsScreen()),
+          GoRoute(
+              path: '/modeles',
+              builder: (context, state) => const ModelesScreen()),
+          GoRoute(
+              path: '/modeles/nouveau',
+              builder: (context, state) => const ModeleFormScreen()),
+          GoRoute(
+            path: '/modeles/:modeleId',
+            builder: (context, state) => ModeleFormScreen(
+                modeleId: state.pathParameters['modeleId']),
+          ),
+          GoRoute(
+            path: '/historique/commandes',
+            builder: (context, state) => const CommandesHistoriqueScreen(),
+          ),
+          GoRoute(
+            path: '/historique/paiements',
+            builder: (context, state) => const PaiementsHistoriqueScreen(),
+          ),
+          GoRoute(
+            path: '/calendrier',
+            builder: (context, state) => const CalendrierScreen(),
+          ),
         ],
       ),
     ],

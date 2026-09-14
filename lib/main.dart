@@ -14,27 +14,18 @@ import 'providers/atelier_provider.dart';
 import 'providers/clients_provider.dart';
 import 'providers/orders_provider.dart';
 import 'providers/fiches_mesures_provider.dart';
+import 'providers/modeles_provider.dart';
+import 'providers/metier_provider.dart';
+import 'core/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Charge les clés Firebase depuis .env (jamais commité). Ces clés sont
-  // propres à AtelierPro — ne jamais les mélanger avec NiyaJobs.
   await dotenv.load(fileName: '.env');
-
-  // Nécessaire pour tout DateFormat utilisant des noms de mois/jours en
-  // français (ex: DateFormat('MMMM', 'fr_FR')) — sans ça, ça plante avec
-  // une LocaleDataException au premier appel.
   await initializeDateFormatting('fr_FR');
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await NotificationService.init();
 
-  // Mode hors-ligne : la persistance locale est activée par défaut sur
-  // mobile, mais on le rend explicite ici (et on retire la limite de
-  // taille du cache par défaut ~40 Mo, utile si beaucoup de photos/logos
-  // sont mis en cache) — les lectures fonctionnent depuis le cache local
-  // sans réseau, et les écritures faites hors ligne sont automatiquement
-  // mises en file d'attente et synchronisées au retour de la connexion.
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
@@ -55,6 +46,11 @@ class AtelierProApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ClientsProvider()),
         ChangeNotifierProvider(create: (_) => OrdersProvider()),
         ChangeNotifierProvider(create: (_) => FichesMesuresProvider()),
+        ChangeNotifierProvider(create: (_) => ModelesProvider()),
+        ChangeNotifierProxyProvider<AtelierProvider, MetierProvider>(
+          create: (context) => MetierProvider(context.read<AtelierProvider>()),
+          update: (context, atelier, previous) => previous ?? MetierProvider(atelier),
+        ),
       ],
       child: Builder(
         builder: (context) {

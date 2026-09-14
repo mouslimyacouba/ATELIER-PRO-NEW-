@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/theme.dart';
 import '../../models/order.dart';
+import '../../models/modele_fabrication.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/clients_provider.dart';
 import '../../providers/fiches_mesures_provider.dart';
 import '../../providers/orders_provider.dart';
+import '../../providers/modeles_provider.dart';
+import '../../providers/metier_provider.dart';
+import '../../core/widgets/dynamic_fields_form.dart';
+
+enum NewOrderStep { clientMetier, specifications, fabricationAcompte }
 
 class NewOrderScreen extends StatefulWidget {
   final String? initialClientId;
@@ -16,10 +23,17 @@ class NewOrderScreen extends StatefulWidget {
 }
 
 class _NewOrderScreenState extends State<NewOrderScreen> {
+  NewOrderStep _currentStep = NewOrderStep.clientMetier;
   final _formKey = GlobalKey<FormState>();
-  final _descCtrl = TextEditingController();
-  final _amountCtrl = TextEditingController();
+
+  final Map<String, TextEditingController> _dynamicControllers = {};
+  Map<String, dynamic> _specificationsMetier = {};
+
+  final TextEditingController _descCtrl = TextEditingController();
+  final TextEditingController _amountCtrl = TextEditingController();
+
   String? _clientId;
+  String? _modeleId;
   String? _ficheMesureId;
   DateTime? _dateEcheance;
   bool _loading = false;
@@ -31,23 +45,22 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     _clientId = widget.initialClientId;
   }
 
-  bool _fichesLoaded = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_fichesLoaded) {
-      _fichesLoaded = true;
-      final userId = context.read<AtelierProvider>().atelier?.userId;
-      if (userId != null) context.read<FichesMesuresProvider>().load(userId);
-    }
-  }
-
   @override
   void dispose() {
     _descCtrl.dispose();
     _amountCtrl.dispose();
+    for (var c in _dynamicControllers.values) c.dispose();
     super.dispose();
+  }
+
+  void _appliquerModele(ModeleFabrication modele) {
+    setState(() {
+      _modeleId = modele.id;
+      _descCtrl.text = modele.description.isNotEmpty ? modele.description : modele.nom;
+      if (modele.prixIndicatif != null) {
+        _amountCtrl.text = modele.prixIndicatif!.toStringAsFixed(0);
+      }
+    });
   }
 
   Future<void> _pickDate() async {
@@ -61,125 +74,144 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _clientId == null) {
-      if (_clientId == null) setState(() => _error = 'Sélectionnez un client');
+    if (_clientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez sélectionner un client')),
+      );
       return;
     }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
 
-    final userId = context.read<AtelierProvider>().atelier!.userId;
+    final atelier = context.read<AtelierProvider>().atelier;
+    if (atelier == null) return;
+
     final clientNom = context.read<ClientsProvider>().byId(_clientId!)?.nomComplet;
+    List<Map<String, dynamic>> etapesSnapshot = [];
+    if (_modeleId != null) {
+      final modele = context.read<ModelesProvider>().tousLesModeles.firstWhere((m) => m.id == _modeleId);
+      int ordre = 1;
+      etapesSnapshot = modele.etapes.map((e) => {'id': e.id, 'ordre': ordre++, 'titre': e.titre, 'terminee': false}).toList();
+    }
+
     final result = await context.read<OrdersProvider>().createOrder(AtelierOrder(
-          id: '',
-          userId: userId,
-          clientId: _clientId!,
-          clientName: clientNom,
-          description: _descCtrl.text.trim(),
-          status: OrderStatus.enAttente,
-          dateCommande: DateTime.now(),
-          dateEcheance: _dateEcheance,
-          prixTotal: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
-          acompte: 0,
-          createdAt: DateTime.now(),
-          ficheMesureId: _ficheMesureId,
-        ));
+      id: '',
+      userId: atelier.userId,
+      clientId: _clientId!,
+      clientName: clientNom,
+      description: _descCtrl.text.trim(),
+      status: OrderStatus.enAttente,
+      dateCommande: DateTime.now(),
+      dateEcheance: _dateEcheance,
+      prixTotal: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
+      acompte: 0,
+      createdAt: DateTime.now(),
+      ficheMesureId: _ficheMesureId,
+      modeleId: _modeleId,
+      etapesSnapshot: etapesSnapshot,
+      specificationsMetier: _specificationsMetier,
+    ));
 
     if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _error = result;
-    });
     if (result == null) context.go('/commandes');
+    else setState(() { _loading = false; _error = result; });
   }
 
   @override
   Widget build(BuildContext context) {
-    final clients = context.watch<ClientsProvider>().clients;
-    final fiches = _clientId == null
-        ? <dynamic>[]
-        : context.watch<FichesMesuresProvider>().forClient(_clientId!);
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Nouvelle commande')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DropdownButtonFormField<String>(
-                value: _clientId,
-                decoration: const InputDecoration(labelText: 'Client'),
-                items: clients
-                    .map((c) => DropdownMenuItem(value: c.id, child: Text(c.nomComplet)))
-                    .toList(),
-                onChanged: (v) => setState(() {
-                  _clientId = v;
-                  _ficheMesureId = null;
-                }),
-                hint: clients.isEmpty ? const Text('Aucun client — ajoutez-en un d\'abord') : const Text('Choisir un client'),
-              ),
-              if (fiches.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _ficheMesureId,
-                  decoration: const InputDecoration(labelText: 'Fiche liée (optionnel)'),
-                  items: fiches
-                      .map<DropdownMenuItem<String>>((f) => DropdownMenuItem(value: f.id, child: Text(f.titre)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _ficheMesureId = v),
-                ),
-              ],
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Description de la commande'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Description requise' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Montant total (FCFA)'),
-                validator: (v) {
-                  final n = double.tryParse((v ?? '').replaceAll(',', '.'));
-                  if (n == null || n <= 0) return 'Montant invalide';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_dateEcheance == null
-                    ? "Date de livraison souhaitée (optionnel)"
-                    : "Livraison : ${_dateEcheance!.day}/${_dateEcheance!.month}/${_dateEcheance!.year}"),
-                trailing: const Icon(Icons.calendar_today, size: 18),
-                onTap: _pickDate,
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
-              ],
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: (_loading || clients.isEmpty) ? null : _submit,
-                child: _loading
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Créer la commande'),
-              ),
-            ],
-          ),
-        ),
+      backgroundColor: AtelierProColors.surface,
+      appBar: _buildHeader(),
+      body: Form(key: _formKey, child: _buildCurrentStepView()),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  PreferredSizeWidget _buildHeader() {
+    return AppBar(
+      title: const Text('Nouvelle Commande'),
+      backgroundColor: AtelierProColors.surfaceContainer,
+    );
+  }
+
+  Widget _buildCurrentStepView() {
+    return SingleChildScrollView(padding: const EdgeInsets.all(20), child: switch (_currentStep) {
+      NewOrderStep.clientMetier => _buildClientMetierStep(),
+      NewOrderStep.specifications => _buildSpecsStep(),
+      NewOrderStep.fabricationAcompte => _buildFabStep(),
+    });
+  }
+
+  Widget _buildClientMetierStep() {
+    final clients = context.watch<ClientsProvider>().clients;
+    final modeles = context.watch<ModelesProvider>().modeles;
+    return Column(children: [
+      DropdownButtonFormField<String>(
+        value: _clientId,
+        decoration: const InputDecoration(labelText: 'Client *', border: OutlineInputBorder()),
+        items: clients.map((c) => DropdownMenuItem(value: c.id, child: Text(c.nomComplet))).toList(),
+        onChanged: (v) => setState(() => _clientId = v),
       ),
+      const SizedBox(height: 16),
+      DropdownButtonFormField<String>(
+        value: _modeleId,
+        decoration: const InputDecoration(labelText: 'Modèle (optionnel)', border: OutlineInputBorder()),
+        items: [const DropdownMenuItem(value: null, child: Text('Aucun')), ...modeles.map((m) => DropdownMenuItem(value: m.id, child: Text(m.nom)))],
+        onChanged: (v) {
+          if (v != null) _appliquerModele(modeles.firstWhere((m) => m.id == v));
+          else setState(() => _modeleId = null);
+        },
+      ),
+    ]);
+  }
+
+  Widget _buildSpecsStep() {
+    final metierConfig = context.watch<MetierProvider>().config;
+    if (metierConfig == null || metierConfig.champs.isEmpty) return const Text('Aucune spécification requise.');
+    return DynamicFieldsForm(fields: metierConfig.champs, controllers: _dynamicControllers, onChanged: (v) => _specificationsMetier = v);
+  }
+
+  Widget _buildFabStep() {
+    final fiches = _clientId == null ? <dynamic>[] : context.watch<FichesMesuresProvider>().forClient(_clientId!);
+    return Column(children: [
+      if (fiches.isNotEmpty) DropdownButtonFormField<String>(
+        value: _ficheMesureId,
+        decoration: const InputDecoration(labelText: 'Fiche liée', border: OutlineInputBorder()),
+        items: fiches.map<DropdownMenuItem<String>>((f) => DropdownMenuItem(value: f.id, child: Text(f.titre))).toList(),
+        onChanged: (v) => setState(() => _ficheMesureId = v),
+      ),
+      const SizedBox(height: 16),
+      TextFormField(controller: _descCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+      const SizedBox(height: 16),
+      TextFormField(controller: _amountCtrl, decoration: const InputDecoration(labelText: 'Montant (FCFA)', border: OutlineInputBorder())),
+      const SizedBox(height: 16),
+      ListTile(
+        title: Text(_dateEcheance == null ? "Date de livraison" : "Livraison : ${_dateEcheance!.day}/${_dateEcheance!.month}"),
+        trailing: const Icon(Icons.calendar_today),
+        onTap: _pickDate,
+      ),
+    ]);
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: AtelierProColors.surfaceContainerHigh,
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+      ),
+      child: Row(children: [
+        if (_currentStep != NewOrderStep.clientMetier)
+          TextButton(onPressed: () => setState(() => _currentStep = NewOrderStep.values[_currentStep.index - 1]), child: const Text('Précédent')),
+        const Spacer(),
+        ElevatedButton(
+          onPressed: () {
+            if (_currentStep == NewOrderStep.fabricationAcompte) _submit();
+            else setState(() => _currentStep = NewOrderStep.values[_currentStep.index + 1]);
+          },
+          child: Text(_currentStep == NewOrderStep.fabricationAcompte ? 'CRÉER' : 'Suivant'),
+        ),
+      ]),
     );
   }
 }

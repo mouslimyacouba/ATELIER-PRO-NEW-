@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/contact_actions.dart';
@@ -185,7 +186,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -240,8 +240,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final atelier = context.read<AtelierProvider>().atelier;
     if (atelier != null) {
-      // Supprime la ligne atelier ; les clients/commandes/paiements/fiches
-      // partent en cascade (contraintes ON DELETE CASCADE côté base).
       final error = await context.read<AtelierProvider>().deleteAtelier();
       if (error != null && mounted) {
         ScaffoldMessenger.of(context)
@@ -319,6 +317,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: Text(atelier?.specialiteLabel ?? ''),
               trailing: const Icon(Icons.edit_outlined, size: 20),
               onTap: _editAtelier,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.dashboard_customize_outlined,
+                  color: AtelierProColors.primary),
+              title: const Text('Mes modèles de fabrication'),
+              subtitle: const Text('Boubou homme, table en bois...'),
+              trailing: const Icon(Icons.chevron_right, size: 20),
+              onTap: () => context.push('/modeles'),
             ),
           ),
           const SizedBox(height: 8),

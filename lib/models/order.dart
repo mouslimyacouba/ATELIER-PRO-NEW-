@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-/// Statuts de commande (avant : enum Postgres `statut_commande`, maintenant
-/// juste une chaîne stockée telle quelle côté Firestore).
 enum OrderStatus { enAttente, enCours, termine, livre }
 
 extension OrderStatusX on OrderStatus {
@@ -35,13 +33,13 @@ extension OrderStatusX on OrderStatus {
   Color get color {
     switch (this) {
       case OrderStatus.enAttente:
-        return const Color(0xFFF59E0B); // status-pending
+        return const Color(0xFFF59E0B);
       case OrderStatus.enCours:
-        return const Color(0xFF3B82F6); // status-progress
+        return const Color(0xFF3B82F6);
       case OrderStatus.termine:
-        return const Color(0xFF10B981); // status-done
+        return const Color(0xFF10B981);
       case OrderStatus.livre:
-        return const Color(0xFF6366F1); // status-delivered
+        return const Color(0xFF6366F1);
     }
   }
 
@@ -65,10 +63,13 @@ class AtelierOrder {
   final double prixTotal;
   final double acompte;
   final DateTime createdAt;
-  // Dénormalisé (copié au moment de la création) : Firestore ne fait pas de
-  // jointures. Si le client est renommé plus tard, les anciennes commandes
-  // gardent l'ancien nom affiché — compromis standard et acceptable ici.
   final String? clientName;
+
+  final String? modeleId;
+  final List<Map<String, dynamic>>? etapesSnapshot;
+  final List<String> photoUrls;
+  final Map<String, dynamic>? specificationsMetier;
+  final int? numero;
 
   AtelierOrder({
     required this.id,
@@ -83,15 +84,34 @@ class AtelierOrder {
     required this.acompte,
     required this.createdAt,
     this.clientName,
+    this.modeleId,
+    this.etapesSnapshot,
+    this.photoUrls = const [],
+    this.specificationsMetier,
+    this.numero,
   });
 
   double get remaining => (prixTotal - acompte).clamp(0, double.infinity);
   bool get isFullyPaid => remaining <= 0;
 
-  // Alias pratiques utilisés dans l'UI (montants).
   double get totalAmount => prixTotal;
   double get paidAmount => acompte;
   DateTime? get dueDate => dateEcheance;
+
+  String get numeroFormate {
+    if (numero == null) return '';
+    return 'CMD-${numero.toString().padLeft(4, '0')}';
+  }
+
+  int get etapesCompletes {
+    if (etapesSnapshot == null) return 0;
+    return etapesSnapshot!.where((e) => e['terminee'] == true).length;
+  }
+
+  double get progressionFabrication {
+    if (etapesSnapshot == null || etapesSnapshot!.isEmpty) return 0.0;
+    return etapesCompletes / etapesSnapshot!.length;
+  }
 
   factory AtelierOrder.fromMap(String id, Map<String, dynamic> map) {
     return AtelierOrder(
@@ -101,12 +121,25 @@ class AtelierOrder {
       ficheMesureId: map['ficheId'] as String?,
       description: map['description'] as String,
       status: OrderStatusX.fromValue(map['statut'] as String),
-      dateCommande: (map['dateCommande'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      dateCommande:
+          (map['dateCommande'] as Timestamp?)?.toDate() ?? DateTime.now(),
       dateEcheance: (map['dateEcheance'] as Timestamp?)?.toDate(),
       prixTotal: (map['prixTotal'] as num).toDouble(),
       acompte: (map['acompte'] as num?)?.toDouble() ?? 0,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       clientName: map['clientNom'] as String?,
+      modeleId: map['modeleId'] as String?,
+      etapesSnapshot: (map['etapesSnapshot'] as List<dynamic>?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList(),
+      photoUrls: (map['photoUrls'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      specificationsMetier: map['specificationsMetier'] != null
+          ? Map<String, dynamic>.from(map['specificationsMetier'] as Map)
+          : null,
+      numero: (map['numero'] as num?)?.toInt(),
     );
   }
 
@@ -119,11 +152,17 @@ class AtelierOrder {
       'description': description,
       'statut': status.value,
       'dateCommande': Timestamp.fromDate(dateCommande),
-      'dateEcheance': dateEcheance != null ? Timestamp.fromDate(dateEcheance!) : null,
+      'dateEcheance':
+          dateEcheance != null ? Timestamp.fromDate(dateEcheance!) : null,
       'prixTotal': prixTotal,
       'acompte': acompte,
-      'createdAt': Timestamp.fromDate(DateTime.now()), // pas serverTimestamp() : sinon disparaît des listes triées jusqu'à confirmation serveur
+      'createdAt': Timestamp.fromDate(DateTime.now()),
       'updatedAt': FieldValue.serverTimestamp(),
+      'modeleId': modeleId,
+      'etapesSnapshot': etapesSnapshot,
+      'photoUrls': photoUrls,
+      'specificationsMetier': specificationsMetier,
+      'numero': numero,
     };
   }
 }

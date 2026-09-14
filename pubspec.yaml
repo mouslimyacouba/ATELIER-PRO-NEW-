@@ -28,6 +28,8 @@ dependencies:
   share_plus: ^10.0.2
   google_fonts: ^6.2.1
   google_sign_in: ^6.2.1
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
 
 dev_dependencies:
   flutter_test:

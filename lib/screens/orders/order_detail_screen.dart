@@ -4,9 +4,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/contact_actions.dart';
+import '../../core/storage_service.dart';
 import '../../core/theme.dart';
 import '../../models/atelier.dart';
 import '../../models/client.dart';
+import '../../models/historique_entry.dart';
 import '../../models/order.dart';
 import '../../models/payment.dart';
 import '../../providers/atelier_provider.dart';
@@ -59,6 +61,50 @@ class OrderDetailScreen extends StatefulWidget {
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
+  bool _uploadingPhoto = false;
+
+  Future<void> _addPhoto(AtelierOrder order) async {
+    final file = await StorageService.pickImage();
+    if (file == null || !mounted) return;
+    setState(() => _uploadingPhoto = true);
+    try {
+      final url = await StorageService.upload(
+        bucket: 'commandes',
+        userId: order.userId,
+        key: '${order.id}_${DateTime.now().millisecondsSinceEpoch}',
+        file: file,
+      );
+      final error = await context.read<OrdersProvider>().addPhoto(order.id, url);
+      if (mounted && error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
+  Future<void> _removePhoto(AtelierOrder order, String url) async {
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer cette photo ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Supprimer', style: TextStyle(color: AtelierProColors.rougeAlerte)),
+          ),
+        ],
+      ),
+    );
+    if (confirme != true || !mounted) return;
+    await context.read<OrdersProvider>().removePhoto(order.id, url);
+  }
+
   Future<void> _addPayment(AtelierOrder order) async {
     final amountCtrl = TextEditingController();
     String method = 'especes';
@@ -138,8 +184,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
     );
 
-    // La liste de paiements se met à jour toute seule (écoute temps réel),
-    // on confirme juste visuellement que l'enregistrement a réussi.
     if (saved == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Paiement enregistré')));
     }
@@ -289,6 +333,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final order = context.watch<OrdersProvider>().byId(widget.orderId);
     final client = order == null ? null : context.watch<ClientsProvider>().byId(order.clientId);
     final payments = order == null ? <AtelierPayment>[] : context.watch<OrdersProvider>().paymentsForOrder(order.id);
+    final historique = order == null
+        ? <HistoriqueEntry>[]
+        : context.watch<OrdersProvider>().historiqueForOrder(order.id);
 
     if (order == null) {
       return const Scaffold(body: AtelierSpinner());
@@ -311,8 +358,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               Row(
                 children: [
                   Text(
-                    'COMMANDE #${order.id.substring(0, 4).toUpperCase()}',
-                    style: AtelierProTheme.dataStyle(fontSize: 12, color: AtelierProColors.onSurfaceVariant),
+                    order.numeroFormate.isNotEmpty
+                        ? order.numeroFormate
+                        : 'COMMANDE #${order.id.substring(0, 4).toUpperCase()}',
+                    style: AtelierProTheme.dataStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AtelierProColors.primary),
                   ),
                   const SizedBox(width: 8),
                   StatusPill(label: order.status.label, color: order.status.color),
@@ -429,6 +478,119 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
             ],
           ),
+          if (order.specificationsMetier != null && order.specificationsMetier!.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text('Détails & Spécifications du métier', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AtelierProColors.surfaceContainer,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AtelierProColors.outlineVariant),
+              ),
+              child: Column(
+                children: [
+                  for (final entry in order.specificationsMetier!.entries)
+                    if (entry.value.toString().trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${entry.key} : ',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AtelierProColors.secondary),
+                            ),
+                            Expanded(
+                              child: Text(
+                                entry.value.toString(),
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                ],
+              ),
+            ),
+          ],
+          if (order.etapesSnapshot != null && order.etapesSnapshot!.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Étapes de fabrication', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(
+                  '${order.etapesCompletes}/${order.etapesSnapshot!.length}',
+                  style: const TextStyle(color: AtelierProColors.onSurfaceVariant),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: order.progressionFabrication,
+                minHeight: 6,
+                backgroundColor: AtelierProColors.surfaceContainer,
+                color: AtelierProColors.tertiary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final etape in (List<Map<String, dynamic>>.from(order.etapesSnapshot!)
+              ..sort((a, b) => (a['ordre'] as int).compareTo(b['ordre'] as int))))
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: etape['terminee'] == true,
+                onChanged: (v) => context
+                    .read<OrdersProvider>()
+                    .toggleEtape(order.id, etape['id'] as String, v ?? false),
+                title: Text('${etape['ordre']}. ${etape['titre']}'),
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: AtelierProColors.primary,
+              ),
+          ],
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Photos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              TextButton.icon(
+                onPressed: _uploadingPhoto ? null : () => _addPhoto(order),
+                icon: _uploadingPhoto
+                    ? const SizedBox(
+                        width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.add_a_photo_outlined, size: 18),
+                label: const Text('Ajouter'),
+              ),
+            ],
+          ),
+          if (order.photoUrls.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Aucune photo (modèle, dessin, avancement...)',
+                  style: TextStyle(color: AtelierProColors.onSurfaceVariant)),
+            )
+          else
+            SizedBox(
+              height: 96,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: order.photoUrls.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final url = order.photoUrls[i];
+                  return GestureDetector(
+                    onLongPress: () => _removePhoto(order, url),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(url, width: 96, height: 96, fit: BoxFit.cover),
+                    ),
+                  );
+                },
+              ),
+            ),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -457,6 +619,46 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   subtitle: Text('${p.modeLabel} · ${_date.format(p.datePaiement)}'),
                 ),
               ),
+          if (historique.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('Historique des modifications',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              children: [
+                for (final h in historique)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4, right: 8),
+                          child: Icon(Icons.history, size: 14, color: AtelierProColors.onSurfaceMuted),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                h.ancienneValeur == null
+                                    ? '${h.champLabel} : "${h.nouvelleValeur ?? '—'}"'
+                                    : '${h.champLabel} : "${h.ancienneValeur}" → "${h.nouvelleValeur ?? '—'}"',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              Text(
+                                _date.format(h.createdAt),
+                                style: const TextStyle(fontSize: 11, color: AtelierProColors.onSurfaceMuted),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

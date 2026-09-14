@@ -1,11 +1,12 @@
 rules_version = '2';
 
-// Règles de sécurité Firestore — AtelierPro
-// Principe : chaque document (atelier, client, commande, paiement, fiche)
-// n'est lisible/modifiable que par son propriétaire (`userId` == uid connecté).
-
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Default Deny: Interdire tout accès par défaut
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
     match /ateliers/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -37,6 +38,24 @@ service cloud.firestore {
         && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /modeles/{docId} {
+      allow read, update, delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /historique_modifications/{docId} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /compteurs/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

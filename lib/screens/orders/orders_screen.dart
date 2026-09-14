@@ -52,12 +52,27 @@ class _OrdersScreenState extends State<OrdersScreen> {
       list = list
           .where((o) =>
               (o.clientName?.toLowerCase().contains(q) ?? false) ||
-              o.description.toLowerCase().contains(q))
+              o.description.toLowerCase().contains(q) ||
+              o.numeroFormate.toLowerCase().contains(q))
           .toList();
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Commandes')),
+      appBar: AppBar(
+        title: const Text('Commandes'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined),
+            tooltip: 'Calendrier des échéances',
+            onPressed: () => context.push('/calendrier'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.history_outlined),
+            tooltip: 'Historique des commandes',
+            onPressed: () => context.push('/historique/commandes'),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           if (ordersProvider.error != null)

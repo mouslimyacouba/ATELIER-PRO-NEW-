@@ -244,16 +244,27 @@ class _ClientTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ordersProvider = context.read<OrdersProvider>();
     final events = <_TimelineEvent>[
-      for (final o in orders)
+      for (final o in orders) ...[
         _TimelineEvent(
           date: o.createdAt,
           icon: Icons.add_box_outlined,
           color: AtelierProColors.tertiary,
-          title: 'Commande créée',
+          title: 'Commande créée ${o.numeroFormate.isNotEmpty ? "(${o.numeroFormate})" : ""}',
           subtitle: o.description,
           trailing: _money.format(o.prixTotal),
         ),
+        for (final h in ordersProvider.historiqueForOrder(o.id))
+          _TimelineEvent(
+            date: h.createdAt,
+            icon: Icons.edit_note_outlined,
+            color: AtelierProColors.secondary,
+            title: 'Modification (${h.champModifie})',
+            subtitle: '${h.ancienneValeur ?? '—'} ➔ ${h.nouvelleValeur ?? '—'}',
+            trailing: o.numeroFormate.isNotEmpty ? o.numeroFormate : null,
+          ),
+      ],
       for (final p in payments)
         _TimelineEvent(
           date: p.datePaiement,
@@ -297,8 +308,9 @@ class _ClientTimeline extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(event.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                          Text(event.trailing,
-                              style: AtelierProTheme.dataStyle(fontSize: 13, color: event.color)),
+                          if (event.trailing != null)
+                            Text(event.trailing!,
+                                style: AtelierProTheme.dataStyle(fontSize: 13, color: event.color)),
                         ],
                       ),
                       const SizedBox(height: 2),
@@ -326,7 +338,7 @@ class _TimelineEvent {
   final Color color;
   final String title;
   final String subtitle;
-  final String trailing;
+  final String? trailing;
 
   _TimelineEvent({
     required this.date,
@@ -334,7 +346,7 @@ class _TimelineEvent {
     required this.color,
     required this.title,
     required this.subtitle,
-    required this.trailing,
+    this.trailing,
   });
 }
 
