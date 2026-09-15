@@ -6,8 +6,12 @@ import '../../core/theme.dart';
 import '../../models/order.dart';
 import '../../providers/orders_provider.dart';
 
-final _monthFormat = DateFormat('MMMM yyyy', 'fr_FR');
 final _money = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
+const _joursSemaine = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const _moisNoms = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+];
 
 class CalendrierScreen extends StatefulWidget {
   const CalendrierScreen({super.key});
@@ -17,167 +21,146 @@ class CalendrierScreen extends StatefulWidget {
 }
 
 class _CalendrierScreenState extends State<CalendrierScreen> {
-  late DateTime _focusedMonth;
-  late DateTime _selectedDay;
+  late DateTime _moisAffiche;
+  late DateTime _jourSelectionne;
 
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _focusedMonth = DateTime(now.year, now.month, 1);
-    _selectedDay = DateTime(now.year, now.month, now.day);
+    final today = DateTime.now();
+    _moisAffiche = DateTime(today.year, today.month);
+    _jourSelectionne = DateTime(today.year, today.month, today.day);
   }
 
-  void _previousMonth() {
+  void _changerMois(int delta) {
     setState(() {
-      _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1, 1);
+      _moisAffiche = DateTime(_moisAffiche.year, _moisAffiche.month + delta);
     });
   }
 
-  void _nextMonth() {
-    setState(() {
-      _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 1);
-    });
+  /// Commandes ouvertes (non livrées) groupées par jour de livraison, pour
+  /// le mois affiché.
+  Map<DateTime, List<AtelierOrder>> _commandesParJour(List<AtelierOrder> orders) {
+    final map = <DateTime, List<AtelierOrder>>{};
+    for (final o in orders) {
+      if (o.dateEcheance == null || o.status == OrderStatus.livre) continue;
+      final d = DateTime(o.dateEcheance!.year, o.dateEcheance!.month, o.dateEcheance!.day);
+      if (d.year != _moisAffiche.year || d.month != _moisAffiche.month) continue;
+      map.putIfAbsent(d, () => []).add(o);
+    }
+    return map;
   }
 
   @override
   Widget build(BuildContext context) {
-    final ordersProvider = context.watch<OrdersProvider>();
-    final orders = ordersProvider.orders;
-
-    final firstDayOfMonth = _focusedMonth;
-    final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
-    final startingWeekday = firstDayOfMonth.weekday; // 1 = Lundi, 7 = Dimanche
-
+    final orders = context.watch<OrdersProvider>().orders;
+    final parJour = _commandesParJour(orders);
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);
 
-    // Groupement des commandes par date d'échéance
-    final Map<DateTime, List<AtelierOrder>> ordersByDay = {};
-    for (final o in orders) {
-      if (o.dateEcheance != null) {
-        final d = o.dateEcheance!;
-        final key = DateTime(d.year, d.month, d.day);
-        ordersByDay.putIfAbsent(key, () => []).add(o);
-      }
-    }
+    final commandesDuJour = (parJour[_jourSelectionne] ?? [])
+      ..sort((a, b) => (a.numero ?? 0).compareTo(b.numero ?? 0));
 
-    final selectedDayKey = DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day);
-    final ordersForSelectedDay = ordersByDay[selectedDayKey] ?? [];
+    // Grille du mois : premier lundi visible -> dernier dimanche visible.
+    final premierJourMois = DateTime(_moisAffiche.year, _moisAffiche.month, 1);
+    final decalage = (premierJourMois.weekday - DateTime.monday) % 7;
+    final debutGrille = premierJourMois.subtract(Duration(days: decalage));
+    final jours = List.generate(42, (i) => debutGrille.add(Duration(days: i)));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Calendrier des livraisons'),
-      ),
+      appBar: AppBar(title: const Text('Calendrier des échéances')),
       body: Column(
         children: [
-          // En-tête du mois
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: AtelierProColors.surfaceContainer,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
-                  onPressed: _previousMonth,
+                  onPressed: () => _changerMois(-1),
                 ),
-                Text(
-                  _monthFormat.format(_focusedMonth).toUpperCase(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                Text('${_moisNoms[_moisAffiche.month - 1]} ${_moisAffiche.year}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  onPressed: _nextMonth,
+                  onPressed: () => _changerMois(1),
                 ),
               ],
             ),
           ),
-          // Jours de la semaine
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-                  .map((day) => Expanded(
-                        child: Center(
-                          child: Text(
-                            day,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AtelierProColors.onSurfaceVariant),
-                          ),
-                        ),
-                      ))
-                  .toList(),
-            ),
+          Row(
+            children: [
+              for (final j in _joursSemaine)
+                Expanded(
+                  child: Center(
+                    child: Text(j,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AtelierProColors.onSurfaceMuted)),
+                  ),
+                ),
+            ],
           ),
-          // Grille du mois
+          const SizedBox(height: 4),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: 42, // 6 semaines x 7 jours
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              childAspectRatio: 1.1,
+              childAspectRatio: 1,
             ),
-            itemBuilder: (context, index) {
-              final dayOffset = index - (startingWeekday - 1);
-              if (dayOffset < 0 || dayOffset >= daysInMonth) {
-                return const SizedBox.shrink();
-              }
-
-              final dayNumber = dayOffset + 1;
-              final currentDayDate = DateTime(_focusedMonth.year, _focusedMonth.month, dayNumber);
-              final isToday = currentDayDate.year == todayOnly.year &&
-                  currentDayDate.month == todayOnly.month &&
-                  currentDayDate.day == todayOnly.day;
-              final isSelected = currentDayDate.year == _selectedDay.year &&
-                  currentDayDate.month == _selectedDay.month &&
-                  currentDayDate.day == _selectedDay.day;
-
-              final dayOrders = ordersByDay[currentDayDate] ?? [];
-              final hasOverdue = dayOrders.any((o) => o.status != OrderStatus.livre && currentDayDate.isBefore(todayOnly));
-              final hasPending = dayOrders.any((o) => o.status != OrderStatus.livre && !currentDayDate.isBefore(todayOnly));
+            itemCount: jours.length,
+            itemBuilder: (context, i) {
+              final jour = jours[i];
+              final horsDuMois = jour.month != _moisAffiche.month;
+              final estAujourdhui = jour.isAtSameMomentAs(todayOnly);
+              final estSelectionne = jour.isAtSameMomentAs(_jourSelectionne);
+              final commandes = parJour[jour] ?? const <AtelierOrder>[];
+              final enRetard = commandes.isNotEmpty && jour.isBefore(todayOnly);
 
               return GestureDetector(
-                onTap: () => setState(() => _selectedDay = currentDayDate),
+                onTap: () => setState(() => _jourSelectionne = jour),
                 child: Container(
-                  margin: const EdgeInsets.all(3),
+                  margin: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
-                    color: isSelected
+                    color: estSelectionne
                         ? AtelierProColors.primary
-                        : (isToday ? AtelierProColors.primary.withValues(alpha: 0.15) : null),
-                    borderRadius: BorderRadius.circular(8),
-                    border: isToday && !isSelected ? Border.all(color: AtelierProColors.primary) : null,
+                        : estAujourdhui
+                            ? AtelierProColors.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '$dayNumber',
+                        '${jour.day}',
                         style: TextStyle(
-                          fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? Colors.white : (isToday ? AtelierProColors.primary : null),
+                          fontSize: 13,
+                          fontWeight: estAujourdhui ? FontWeight.w800 : FontWeight.w500,
+                          color: estSelectionne
+                              ? Colors.white
+                              : horsDuMois
+                                  ? AtelierProColors.onSurfaceMuted
+                                  : AtelierProColors.onSurface,
                         ),
                       ),
-                      if (dayOrders.isNotEmpty) ...[
+                      if (commandes.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (hasOverdue)
-                              Container(
-                                width: 6,
-                                height: 6,
-                                margin: const EdgeInsets.symmetric(horizontal: 1),
-                                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                              ),
-                            if (hasPending)
-                              Container(
-                                width: 6,
-                                height: 6,
-                                margin: const EdgeInsets.symmetric(horizontal: 1),
-                                decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-                              ),
-                          ],
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: estSelectionne
+                                ? Colors.white
+                                : enRetard
+                                    ? AtelierProColors.statusUrgent
+                                    : AtelierProColors.statusPending,
+                          ),
                         ),
                       ],
                     ],
@@ -186,65 +169,32 @@ class _CalendrierScreenState extends State<CalendrierScreen> {
               );
             },
           ),
-          const Divider(height: 1),
-          // Liste des commandes prévues pour le jour sélectionné
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                const Icon(Icons.event, size: 18, color: AtelierProColors.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Livraisons le ${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const Spacer(),
-                Text(
-                  '${ordersForSelectedDay.length} commande(s)',
-                  style: const TextStyle(color: AtelierProColors.onSurfaceVariant, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
+          const Divider(height: 24),
           Expanded(
-            child: ordersForSelectedDay.isEmpty
-                ? const Center(
-                    child: Text('Aucune livraison prévue ce jour-là', style: TextStyle(color: AtelierProColors.onSurfaceVariant)),
+            child: commandesDuJour.isEmpty
+                ? Center(
+                    child: Text(
+                      'Aucune livraison prévue le ${_jourSelectionne.day}/${_jourSelectionne.month}',
+                      style: const TextStyle(color: AtelierProColors.onSurfaceVariant),
+                    ),
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    itemCount: ordersForSelectedDay.length,
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: commandesDuJour.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, i) {
-                      final order = ordersForSelectedDay[i];
+                      final o = commandesDuJour[i];
                       return Card(
                         child: ListTile(
-                          onTap: () => context.push('/commandes/${order.id}'),
-                          title: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  order.description,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              if (order.numeroFormate.isNotEmpty)
-                                Text(
-                                  order.numeroFormate,
-                                  style: const TextStyle(fontSize: 12, color: AtelierProColors.primary, fontWeight: FontWeight.w600),
-                                ),
-                            ],
+                          onTap: () => context.push('/commandes/${o.id}'),
+                          leading: CircleAvatar(
+                            backgroundColor: o.status.color.withValues(alpha: 0.15),
+                            child: Icon(Icons.checkroom, size: 18, color: o.status.color),
                           ),
+                          title: Text('${o.numeroFormate} · ${o.clientName ?? 'Client'}'),
                           subtitle: Text(
-                            '${order.clientName ?? "Client"} · Reste: ${_money.format(order.remaining)}',
-                          ),
-                          trailing: StatusPill(
-                            label: order.status.label,
-                            color: order.status.color,
-                          ),
+                              '${o.description} · reste ${_money.format(o.remaining)}'),
+                          trailing: StatusPill(label: o.status.label, color: o.status.color),
                         ),
                       );
                     },

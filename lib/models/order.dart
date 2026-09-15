@@ -71,6 +71,10 @@ class AtelierOrder {
   final Map<String, dynamic>? specificationsMetier;
   final int? numero;
 
+  final double coutMateriaux;
+  final double coutMainDoeuvre;
+  final double coutTransport;
+
   AtelierOrder({
     required this.id,
     required this.userId,
@@ -89,7 +93,13 @@ class AtelierOrder {
     this.photoUrls = const [],
     this.specificationsMetier,
     this.numero,
+    this.coutMateriaux = 0.0,
+    this.coutMainDoeuvre = 0.0,
+    this.coutTransport = 0.0,
   });
+
+  double get coutTotalRevient => coutMateriaux + coutMainDoeuvre + coutTransport;
+  double get beneficeEstime => prixTotal - coutTotalRevient;
 
   double get remaining => (prixTotal - acompte).clamp(0, double.infinity);
   bool get isFullyPaid => remaining <= 0;
@@ -156,13 +166,16 @@ class AtelierOrder {
           dateEcheance != null ? Timestamp.fromDate(dateEcheance!) : null,
       'prixTotal': prixTotal,
       'acompte': acompte,
-      'createdAt': Timestamp.fromDate(DateTime.now()),
+      'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': FieldValue.serverTimestamp(),
       'modeleId': modeleId,
       'etapesSnapshot': etapesSnapshot,
       'photoUrls': photoUrls,
       'specificationsMetier': specificationsMetier,
       'numero': numero,
+      'coutMateriaux': coutMateriaux,
+      'coutMainDoeuvre': coutMainDoeuvre,
+      'coutTransport': coutTransport,
     };
   }
 }

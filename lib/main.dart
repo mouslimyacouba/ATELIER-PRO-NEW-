@@ -16,6 +16,7 @@ import 'providers/orders_provider.dart';
 import 'providers/fiches_mesures_provider.dart';
 import 'providers/modeles_provider.dart';
 import 'providers/metier_provider.dart';
+import 'providers/stock_provider.dart';
 import 'core/notification_service.dart';
 
 Future<void> main() async {
@@ -47,6 +48,7 @@ class AtelierProApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OrdersProvider()),
         ChangeNotifierProvider(create: (_) => FichesMesuresProvider()),
         ChangeNotifierProvider(create: (_) => ModelesProvider()),
+        ChangeNotifierProvider(create: (_) => StockProvider()),
         ChangeNotifierProxyProvider<AtelierProvider, MetierProvider>(
           create: (context) => MetierProvider(context.read<AtelierProvider>()),
           update: (context, atelier, previous) => previous ?? MetierProvider(atelier),

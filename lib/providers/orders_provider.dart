@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../core/firestore_errors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +8,9 @@ import '../models/order.dart';
 import '../models/payment.dart';
 import '../models/historique_entry.dart';
 import '../core/notification_service.dart';
+import 'stock_provider.dart';
+import 'modeles_provider.dart';
+import 'package:provider/provider.dart';
 
 class OrdersProvider extends ChangeNotifier {
   final _firestore = FirebaseFirestore.instance;
@@ -86,10 +91,10 @@ class OrdersProvider extends ChangeNotifier {
             .map((d) => AtelierOrder.fromMap(d.id, d.data()))
             .toList();
         _orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        NotificationService.scheduleOrderReminders(_orders);
         _loading = false;
         _error = null;
         notifyListeners();
+        NotificationService.syncReminders(_orders);
         if (!completer.isCompleted) completer.complete();
       },
       onError: (e) {
@@ -141,14 +146,32 @@ class OrdersProvider extends ChangeNotifier {
     return completer.future;
   }
 
-  Future<String?> createOrder(AtelierOrder order) async {
+  Future<String?> createOrder(AtelierOrder order, {StockProvider? stockProvider, List<String>? materiauxDefaut}) async {
     try {
-      final docRef = _firestore.collection('commandes').doc();
-      final compteurRef = _firestore.collection('compteurs').doc(order.userId);
+      final currentUser = FirebaseAuth.instance.currentUser;
 
-      await _firestore.runTransaction((transaction) async {
-        final compteurSnap = await transaction.get(compteurRef);
+      debugPrint('========== CREATION COMMANDE ==========');
+      debugPrint('Firebase UID : ${currentUser?.uid}');
+      debugPrint('Order UID   : ${order.userId}');
+      debugPrint('========================================');
+
+      if (currentUser == null) {
+        return 'Utilisateur non connecté.';
+      }
+
+      if (currentUser.uid != order.userId) {
+        return 'Erreur utilisateur : l’atelier ne correspond pas au compte connecté.';
+      }
+
+      final docRef = _firestore.collection('commandes').doc();
+      final compteurRef =
+          _firestore.collection('compteurs').doc(order.userId);
+
+      if (kIsWeb) {
+        // Mode séquentiel sans transaction pour le Web
+        final compteurSnap = await compteurRef.get();
         int nouveauNumero = 1;
+
         if (compteurSnap.exists && compteurSnap.data() != null) {
           nouveauNumero =
               (compteurSnap.data()!['dernierNumero'] as num? ?? 0).toInt() + 1;
@@ -157,19 +180,68 @@ class OrdersProvider extends ChangeNotifier {
         final map = order.toInsertMap();
         map['numero'] = nouveauNumero;
 
-        transaction.set(
-          compteurRef,
+        await compteurRef.set(
           {
             'dernierNumero': nouveauNumero,
             'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
         );
-        transaction.set(docRef, map);
-      });
+
+        await docRef.set(map);
+      } else {
+        // Transaction sécurisée pour Android / iOS
+        await _firestore.runTransaction((transaction) async {
+          final compteurSnap = await transaction.get(compteurRef);
+
+          int nouveauNumero = 1;
+
+          if (compteurSnap.exists && compteurSnap.data() != null) {
+            nouveauNumero =
+                (compteurSnap.data()!['dernierNumero'] as num? ?? 0).toInt() + 1;
+          }
+
+          final map = order.toInsertMap();
+          map['numero'] = nouveauNumero;
+
+          transaction.set(
+            compteurRef,
+            {
+              'dernierNumero': nouveauNumero,
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+
+          transaction.set(docRef, map);
+        });
+      }
+
+      if (stockProvider != null && materiauxDefaut != null && materiauxDefaut.isNotEmpty) {
+        try {
+          final listConsommes = materiauxDefaut.map((m) => {'nom': m, 'quantite': 1.0}).toList();
+          await stockProvider.consommerMateriaux(order.userId, listConsommes);
+        } catch (_) {}
+      }
+
+      debugPrint('Commande créée avec succès : ${docRef.id}');
       return null;
-    } catch (e) {
-      return friendlyFirestoreError(e);
+    } on FirebaseException catch (e, stackTrace) {
+      debugPrint('========== FIREBASE ERROR ==========');
+      debugPrint('CODE    : ${e.code}');
+      debugPrint('MESSAGE : ${e.message}');
+      debugPrint('PLUGIN  : ${e.plugin}');
+      debugPrint('STACK   : $stackTrace');
+      debugPrint('====================================');
+
+      return '${e.code} : ${e.message ?? "Erreur Firestore"}';
+    } catch (e, stackTrace) {
+      debugPrint('========== ERROR ==========');
+      debugPrint('ERROR : $e');
+      debugPrint('STACK : $stackTrace');
+      debugPrint('============================');
+
+      return e.toString();
     }
   }
 

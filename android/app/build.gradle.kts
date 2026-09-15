@@ -4,7 +4,6 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -21,6 +20,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -72,10 +72,12 @@ flutter {
 }
 
 dependencies {
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
+    // Core Library Desugaring
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
-    // Add the dependencies for Firebase products you want to use
-    // When using the BoM, don't specify versions in Firebase dependencies
-    implementation("com.google.firebase:firebase-analytics")
+    // Pas de plugin google-services ni de firebase-analytics natif :
+    // Firebase est initialisé manuellement en Dart via FirebaseOptions
+    // (lib/firebase_options.dart, clés lues depuis .env). Ajouter le plugin
+    // google-services ici sans google-services.json à jour créait un conflit
+    // d'initialisation au démarrage (app bloquée sur le splash natif).
 }

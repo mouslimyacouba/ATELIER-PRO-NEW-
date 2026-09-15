@@ -332,6 +332,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           Card(
+            child: ListTile(
+              leading: const Icon(Icons.inventory_2_outlined,
+                  color: AtelierProColors.primary),
+              title: const Text('Mon stock de matériel'),
+              subtitle: const Text('Suivi des tissus, fils et fournitures...'),
+              trailing: const Icon(Icons.chevron_right, size: 20),
+              onTap: () => context.push('/stock'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
             child: Column(
               children: [
                 ListTile(

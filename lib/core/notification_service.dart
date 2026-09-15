@@ -1,127 +1,121 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import '../models/order.dart';
 
+/// Rappels locaux de livraison. Aucun serveur impliqué : chaque appareil
+/// planifie ses propres notifications via le système d'exploitation, donc
+/// ça marche même si le téléphone n'a pas de réseau au moment prévu.
+///
+/// Stratégie simple et robuste : à chaque changement des commandes
+/// (écoute Firestore dans OrdersProvider), on annule tout puis on
+/// replanifie pour les commandes encore ouvertes — pas de risque de
+/// notification fantôme pour une commande livrée ou supprimée entre-temps.
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  NotificationService._();
+  static final _plugin = FlutterLocalNotificationsPlugin();
+  static bool _initialized = false;
 
   static Future<void> init() async {
-    tz.initializeTimeZones();
-    try {
-      final location = tz.getLocation('Africa/Niamey');
-      tz.setLocalLocation(location);
-    } catch (_) {
-      // Fallback au fuseau système si Niamey indisponible
-    }
+    if (_initialized) return;
+    tzdata.initializeTimeZones();
+    // Atelier basé au Niger — un seul fuseau horaire pour tous les
+    // utilisateurs de l'app, pas besoin de détecter celui de l'appareil.
+    tz.setLocalLocation(tz.getLocation('Africa/Niamey'));
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    await _plugin.initialize(
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
 
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    await _notificationsPlugin.initialize(initSettings);
+    _initialized = true;
   }
 
-  static Future<void> scheduleOrderReminders(List<AtelierOrder> orders) async {
-    await _notificationsPlugin.cancelAll();
-
-    final now = DateTime.now();
-
-    for (final order in orders) {
-      if (order.status == OrderStatus.livre || order.dateEcheance == null) {
-        continue;
-      }
-
-      final dateLivraison = order.dateEcheance!;
-
-      // 1. Rappel la veille à 08h00
-      final dateVeille = DateTime(
-        dateLivraison.year,
-        dateLivraison.month,
-        dateLivraison.day,
-      ).subtract(const Duration(days: 1)).add(const Duration(hours: 8));
-
-      if (dateVeille.isAfter(now)) {
-        await _scheduleNotification(
-          id: order.id.hashCode + 1,
-          title: '⏳ Livraison demain !',
-          body: 'Commande "${order.description}" pour ${order.clientName ?? "Client"} prévue demain.',
-          scheduledDate: dateVeille,
-        );
-      }
-
-      // 2. Rappel le jour même à 08h00
-      final dateJour = DateTime(
-        dateLivraison.year,
-        dateLivraison.month,
-        dateLivraison.day,
-        8,
-        0,
-      );
-
-      if (dateJour.isAfter(now)) {
-        await _scheduleNotification(
-          id: order.id.hashCode + 2,
-          title: '📌 Livraison aujourd\'hui !',
-          body: 'La commande "${order.description}" (${order.numeroFormate}) doit être livrée aujourd\'hui.',
-          scheduledDate: dateJour,
-        );
-      }
-    }
-  }
-
-  static Future<void> _scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
-    required DateTime scheduledDate,
-  }) async {
-    final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
-
-    const androidDetails = AndroidNotificationDetails(
-      'commandes_echeances',
-      'Rappels d\'échéances commandes',
-      channelDescription: 'Notifications de rappels pour les livraisons de l\'atelier',
+  static const _details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'livraisons',
+      'Livraisons à venir',
+      channelDescription: 'Rappels de commandes à livrer',
       importance: Importance.high,
       priority: Priority.high,
-    );
+    ),
+    iOS: DarwinNotificationDetails(),
+  );
 
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(),
-    );
+  /// ID stable et positif dérivé de l'id Firestore de la commande, décliné
+  /// en deux variantes (veille / jour J) pour ne jamais entrer en collision.
+  static int _idVeille(String orderId) => (orderId.hashCode & 0x7fffffff) ~/ 2;
+  static int _idJourJ(String orderId) =>
+      (orderId.hashCode & 0x7fffffff) ~/ 2 + 1;
 
+  static Future<void> _scheduleIfFuture(int id, String title, String body, DateTime when) async {
+    final scheduled = tz.TZDateTime.from(when, tz.local);
+    if (scheduled.isBefore(tz.TZDateTime.now(tz.local))) return;
     try {
-      await _notificationsPlugin.zonedSchedule(
+      await _plugin.zonedSchedule(
         id,
         title,
         body,
-        tzScheduledDate,
-        details,
+        scheduled,
+        _details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
       );
     } catch (_) {
-      // Fallback si permission d'alarme exacte refusée
-      await _notificationsPlugin.zonedSchedule(
+      await _plugin.zonedSchedule(
         id,
         title,
         body,
-        tzScheduledDate,
-        details,
+        scheduled,
+        _details,
         androidScheduleMode: AndroidScheduleMode.inexact,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    }
+  }
+
+  /// Replanifie l'ensemble des rappels à partir de la liste courante des
+  /// commandes. À appeler après chaque mise à jour de la liste (voir
+  /// OrdersProvider) — idempotent, pas cher côté OS.
+  static Future<void> syncReminders(List<AtelierOrder> orders) async {
+    if (!_initialized) return;
+    await _plugin.cancelAll();
+
+    for (final o in orders) {
+      if (o.dateEcheance == null || o.status == OrderStatus.livre) continue;
+      final client = o.clientName ?? 'un client';
+      final echeance = o.dateEcheance!;
+
+      final veille = DateTime(echeance.year, echeance.month, echeance.day - 1, 8);
+      await _scheduleIfFuture(
+        _idVeille(o.id),
+        'Livraison demain — ${o.numeroFormate}',
+        '$client attend "${o.description}" demain.',
+        veille,
+      );
+
+      final jourJ = DateTime(echeance.year, echeance.month, echeance.day, 8);
+      await _scheduleIfFuture(
+        _idJourJ(o.id),
+        'Livraison aujourd\'hui — ${o.numeroFormate}',
+        '$client attend "${o.description}" aujourd\'hui.',
+        jourJ,
       );
     }
   }
