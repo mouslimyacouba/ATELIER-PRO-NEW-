@@ -2,8 +2,25 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// Options Firebase par défaut générées / configurées.
-/// Les clés peuvent être surchargées via le fichier .env ou via `flutterfire configure`.
+/// Erreur levée lorsqu'une configuration Firebase est incomplète.
+class FirebaseConfigurationException implements Exception {
+  const FirebaseConfigurationException(this.missingVariables);
+
+  final List<String> missingVariables;
+
+  String get message =>
+      'Configuration Firebase incomplète. Renseigne ces variables '
+      'd’environnement : ${missingVariables.join(', ')}. '
+      'Consulte .env.example pour les obtenir depuis Firebase Console.';
+
+  @override
+  String toString() => message;
+}
+
+/// Options Firebase chargées depuis l'environnement de l'application.
+///
+/// Les valeurs ne sont volontairement pas remplacées par des valeurs factices :
+/// une configuration absente doit être corrigée avant toute connexion Firebase.
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -21,30 +38,64 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static FirebaseOptions get web => FirebaseOptions(
-        apiKey: dotenv.env['FIREBASE_WEB_API_KEY'] ?? 'AIzaSyDummyWebApiKeyForAtelierPro',
-        appId: dotenv.env['FIREBASE_WEB_APP_ID'] ?? '1:1234567890:web:abcdef',
-        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '569744918009',
-        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? 'atelier-pro-1a9e8',
-        authDomain: '${dotenv.env['FIREBASE_PROJECT_ID'] ?? 'atelier-pro-1a9e8'}.firebaseapp.com',
-        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? 'atelier-pro-1a9e8.firebasestorage.app',
-        measurementId: dotenv.env['FIREBASE_WEB_MEASUREMENT_ID'],
+  static FirebaseOptions get web => _options(
+        apiKeyVariable: 'FIREBASE_WEB_API_KEY',
+        appIdVariable: 'FIREBASE_WEB_APP_ID',
+        includeAuthDomain: true,
       );
 
-  static FirebaseOptions get android => FirebaseOptions(
-        apiKey: dotenv.env['FIREBASE_ANDROID_API_KEY'] ?? 'AIzaSyDummyAndroidApiKeyForAtelierPro',
-        appId: dotenv.env['FIREBASE_ANDROID_APP_ID'] ?? '1:1234567890:android:abcdef',
-        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '569744918009',
-        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? 'atelier-pro-1a9e8',
-        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? 'atelier-pro-1a9e8.firebasestorage.app',
+  static FirebaseOptions get android => _options(
+        apiKeyVariable: 'FIREBASE_ANDROID_API_KEY',
+        appIdVariable: 'FIREBASE_ANDROID_APP_ID',
       );
 
-  static FirebaseOptions get ios => FirebaseOptions(
-        apiKey: dotenv.env['FIREBASE_IOS_API_KEY'] ?? 'AIzaSyDummyIosApiKeyForAtelierPro',
-        appId: dotenv.env['FIREBASE_IOS_APP_ID'] ?? '1:1234567890:ios:abcdef',
-        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '569744918009',
-        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? 'atelier-pro-1a9e8',
-        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? 'atelier-pro-1a9e8.firebasestorage.app',
+  static FirebaseOptions get ios => _options(
+        apiKeyVariable: 'FIREBASE_IOS_API_KEY',
+        appIdVariable: 'FIREBASE_IOS_APP_ID',
         iosBundleId: 'com.zinderdigital.atelierpro_mobile',
       );
+
+  static FirebaseOptions _options({
+    required String apiKeyVariable,
+    required String appIdVariable,
+    bool includeAuthDomain = false,
+    String? iosBundleId,
+  }) {
+    final missingVariables = <String>[];
+    final apiKey = _readRequired(apiKeyVariable, missingVariables);
+    final appId = _readRequired(appIdVariable, missingVariables);
+    final messagingSenderId = _readRequired(
+      'FIREBASE_MESSAGING_SENDER_ID',
+      missingVariables,
+    );
+    final projectId = _readRequired('FIREBASE_PROJECT_ID', missingVariables);
+    final storageBucket = _readRequired(
+      'FIREBASE_STORAGE_BUCKET',
+      missingVariables,
+    );
+
+    if (missingVariables.isNotEmpty) {
+      throw FirebaseConfigurationException(missingVariables);
+    }
+
+    return FirebaseOptions(
+      apiKey: apiKey!,
+      appId: appId!,
+      messagingSenderId: messagingSenderId!,
+      projectId: projectId!,
+      storageBucket: storageBucket!,
+      authDomain: includeAuthDomain ? '$projectId.firebaseapp.com' : null,
+      iosBundleId: iosBundleId,
+      measurementId: dotenv.env['FIREBASE_WEB_MEASUREMENT_ID']?.trim(),
+    );
+  }
+
+  static String? _readRequired(String variable, List<String> missingVariables) {
+    final value = dotenv.env[variable]?.trim();
+    if (value == null || value.isEmpty) {
+      missingVariables.add(variable);
+      return null;
+    }
+    return value;
+  }
 }
