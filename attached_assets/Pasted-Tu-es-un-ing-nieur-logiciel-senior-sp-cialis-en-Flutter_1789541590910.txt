@@ -1,0 +1,87 @@
+Tu es un ingénieur logiciel senior spécialisé en Flutter, Dart, Firebase, Cloud Firestore, architecture mobile et tests automatisés.
+
+CONTEXTE DU PROJET
+
+Je développe AtelierPro, une application mobile Flutter destinée aux artisans au Niger.
+
+Objectif : aider les artisans à gérer leurs clients, commandes, fiches métier, mesures, paiements et historique d'activité.
+
+STACK TECHNIQUE
+- Flutter / Dart
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Storage
+- go_router
+- Architecture multi-métiers
+- Design system AtelierProColors
+- Devise FCFA
+- GitHub
+
+FONCTIONNALITÉS À AUDITER
+1. Authentification : inscription, connexion, déconnexion, erreurs et sécurité.
+2. Tableau de bord : statistiques, navigation, affichage des données.
+3. Clients : création, modification, suppression, recherche et affichage.
+4. Commandes : création, modification, statut, numéro CMD-XXXX, client lié et métier.
+5. Fiches métier : Couture, Mécanique, Menuiserie, Soudure, Cordonnerie et Autre.
+6. Champs dynamiques : vérifier que chaque métier affiche ses propres champs et que les données sont correctement enregistrées.
+7. Paiements : acompte, solde restant, historique et calculs en FCFA.
+8. Firestore : lecture, écriture, règles de sécurité, index et gestion des erreurs.
+9. Interface : responsive, cohérence du design, navigation et états de chargement.
+10. Robustesse : mode hors ligne si prévu, erreurs réseau, données absentes et reprise après erreur.
+
+RÈGLES IMPORTANTES
+- Commence par inspecter tout le dépôt avant de modifier le code.
+- Ne réécris pas l'application.
+- Ne change pas l'architecture sans justification.
+- Ne supprime aucune fonctionnalité existante.
+- Ne remplace pas Firebase par Supabase.
+- Ne remplace pas Flutter par React ou une autre technologie.
+- Ne modifie pas les règles Firestore de manière dangereuse.
+- Ne prétends pas qu'un test a réussi s'il n'a pas réellement été exécuté.
+- Si tu ne peux pas exécuter une partie du projet, explique précisément pourquoi.
+
+PHASE 1 — INSPECTION
+Analyse les fichiers, providers, models, services Firebase, écrans, routes et tests existants.
+Identifie les fonctionnalités réellement présentes et celles qui sont seulement prévues.
+
+PHASE 2 — PLAN DE TEST
+Crée une checklist de vérification pour chaque fonctionnalité.
+Pour chaque test, indique : précondition, action, résultat attendu et résultat observé.
+
+PHASE 3 — TESTS TECHNIQUES
+Exécute les commandes et tests adaptés au projet.
+Vérifie notamment : flutter analyze, flutter test, compilation si l'environnement le permet.
+Vérifie les erreurs Dart, les erreurs de typage, les imports, les providers, les futures, les exceptions et les états de chargement.
+
+PHASE 4 — BUGS CRITIQUES
+Porte une attention particulière à :
+- écran qui reste en chargement ;
+- commande qui ne s'enregistre pas ;
+- erreur Firestore ;
+- atelier ou utilisateur null ;
+- mauvais métier affiché dans le formulaire ;
+- numéro de commande incorrect ;
+- calcul acompte/solde ;
+- données qui ne persistent pas ;
+- navigation cassée ;
+- permissions Firebase ;
+- régression entre les métiers.
+
+PHASE 5 — RAPPORT
+Produis un rapport structuré :
+A. Résumé général.
+B. Fonctionnalités vérifiées.
+C. Tests réussis avec preuves.
+D. Bugs trouvés avec fichier et ligne si disponible.
+E. Gravité : critique, élevée, moyenne ou faible.
+F. Cause probable et cause confirmée si elle a été démontrée.
+G. Corrections recommandées.
+H. Tests manuels restant à faire.
+I. Priorités pour rendre AtelierPro utilisable par les premiers artisans.
+
+PHASE 6 — CORRECTIONS
+Ne modifie le code qu'après avoir présenté le diagnostic et le plan de correction.
+Si je confirme, applique les corrections minimales, puis relance les tests.
+Montre les fichiers modifiés, les raisons et les résultats des tests.
+
+Commence maintenant par l'inspection du dépôt et donne-moi d'abord le rapport initial. Ne modifie aucun fichier pour le moment.
