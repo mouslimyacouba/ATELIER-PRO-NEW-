@@ -1,0 +1,1 @@
+- [Replit environment values](replit-env-values.md) — values entered as shared variables can be written into `.replit`; use secrets for configuration that must stay out of Git.
