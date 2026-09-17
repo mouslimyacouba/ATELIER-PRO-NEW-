@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/firestore_errors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -56,8 +55,7 @@ class OrdersProvider extends ChangeNotifier {
       _payments.where((p) => p.clientId == clientId).toList();
 
   List<HistoriqueEntry> historiqueForOrder(String orderId) {
-    final list =
-        _historique.where((h) => h.commandeId == orderId).toList();
+    final list = _historique.where((h) => h.commandeId == orderId).toList();
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
   }
@@ -146,7 +144,8 @@ class OrdersProvider extends ChangeNotifier {
     return completer.future;
   }
 
-  Future<String?> createOrder(AtelierOrder order, {StockProvider? stockProvider, List<String>? materiauxDefaut}) async {
+  Future<String?> createOrder(AtelierOrder order,
+      {StockProvider? stockProvider, List<String>? materiauxDefaut}) async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -164,12 +163,17 @@ class OrdersProvider extends ChangeNotifier {
       }
 
       final docRef = _firestore.collection('commandes').doc();
-      final compteurRef =
-          _firestore.collection('compteurs').doc(order.userId);
+      final compteurRef = _firestore.collection('compteurs').doc(order.userId);
 
-      if (kIsWeb) {
-        // Mode séquentiel sans transaction pour le Web
-        final compteurSnap = await compteurRef.get();
+      // Utilisation de runTransaction() sur tous les supports (Web inclus).
+      // cloud_firestore ^5.x supporte les transactions Web — la branche
+      // kIsWeb séquentielle était obsolète et présentait deux risques :
+      // 1. Non-atomicité : compteur incrémenté même si l'écriture commande échoue.
+      // 2. Sur Flutter Web, les deux .set() séquentiels pouvaient déclencher
+      //    une FirebaseException selon le contexte de sérialisation JS.
+      await _firestore.runTransaction((transaction) async {
+        final compteurSnap = await transaction.get(compteurRef);
+
         int nouveauNumero = 1;
 
         if (compteurSnap.exists && compteurSnap.data() != null) {
@@ -180,7 +184,8 @@ class OrdersProvider extends ChangeNotifier {
         final map = order.toInsertMap();
         map['numero'] = nouveauNumero;
 
-        await compteurRef.set(
+        transaction.set(
+          compteurRef,
           {
             'dernierNumero': nouveauNumero,
             'updatedAt': FieldValue.serverTimestamp(),
@@ -188,38 +193,15 @@ class OrdersProvider extends ChangeNotifier {
           SetOptions(merge: true),
         );
 
-        await docRef.set(map);
-      } else {
-        // Transaction sécurisée pour Android / iOS
-        await _firestore.runTransaction((transaction) async {
-          final compteurSnap = await transaction.get(compteurRef);
+        transaction.set(docRef, map);
+      });
 
-          int nouveauNumero = 1;
-
-          if (compteurSnap.exists && compteurSnap.data() != null) {
-            nouveauNumero =
-                (compteurSnap.data()!['dernierNumero'] as num? ?? 0).toInt() + 1;
-          }
-
-          final map = order.toInsertMap();
-          map['numero'] = nouveauNumero;
-
-          transaction.set(
-            compteurRef,
-            {
-              'dernierNumero': nouveauNumero,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
-
-          transaction.set(docRef, map);
-        });
-      }
-
-      if (stockProvider != null && materiauxDefaut != null && materiauxDefaut.isNotEmpty) {
+      if (stockProvider != null &&
+          materiauxDefaut != null &&
+          materiauxDefaut.isNotEmpty) {
         try {
-          final listConsommes = materiauxDefaut.map((m) => {'nom': m, 'quantite': 1.0}).toList();
+          final listConsommes =
+              materiauxDefaut.map((m) => {'nom': m, 'quantite': 1.0}).toList();
           await stockProvider.consommerMateriaux(order.userId, listConsommes);
         } catch (_) {}
       }
@@ -302,7 +284,9 @@ class OrdersProvider extends ChangeNotifier {
         if (prixTotal != null) 'prixTotal': prixTotal,
         if (dateEcheance != null)
           'dateEcheance': Timestamp.fromDate(dateEcheance),
-        'ficheId': ficheMesureId,
+        // Ne mettre à jour ficheId que si explicitement fourni — null signifie
+        // "pas de changement demandé", pas "détacher la fiche".
+        if (ficheMesureId != null) 'ficheId': ficheMesureId,
         if (modeleId != null) 'modeleId': modeleId,
         if (etapesSnapshot != null) 'etapesSnapshot': etapesSnapshot,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -344,11 +328,13 @@ class OrdersProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> toggleEtape(String orderId, String etapeId, bool terminee) async {
+  Future<String?> toggleEtape(
+      String orderId, String etapeId, bool terminee) async {
     try {
       final order = byId(orderId);
       if (order == null) return null;
-      final etapes = List<Map<String, dynamic>>.from(order.etapesSnapshot ?? []);
+      final etapes =
+          List<Map<String, dynamic>>.from(order.etapesSnapshot ?? []);
       final index = etapes.indexWhere((e) => e['id'] == etapeId);
       if (index == -1) return null;
       etapes[index] = {...etapes[index], 'terminee': terminee};
@@ -393,7 +379,8 @@ class OrdersProvider extends ChangeNotifier {
         batch.delete(_firestore.collection('paiements').doc(p.id));
       }
       for (final h in _historique.where((h) => h.commandeId == orderId)) {
-        batch.delete(_firestore.collection('historique_modifications').doc(h.id));
+        batch.delete(
+            _firestore.collection('historique_modifications').doc(h.id));
       }
       batch.delete(_firestore.collection('commandes').doc(orderId));
       await batch.commit();

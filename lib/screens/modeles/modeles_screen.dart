@@ -138,13 +138,13 @@ class ModelesScreen extends StatelessWidget {
                                 if (modele.prixIndicatif != null) ...[
                                   const SizedBox(width: 16),
                                   const Icon(
-                                    Icons.euro,
+                                    Icons.payments_outlined,
                                     size: 14,
                                     color: AtelierProColors.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '${modele.prixIndicatif!.toStringAsFixed(2)} €',
+                                    '${modele.prixIndicatif!.toStringAsFixed(0)} FCFA',
                                     style: const TextStyle(
                                       color: AtelierProColors.onSurfaceVariant,
                                       fontSize: 12,
@@ -160,7 +160,8 @@ class ModelesScreen extends StatelessWidget {
                             Icons.delete_outline,
                             color: Colors.redAccent,
                           ),
-                          onPressed: () => _confirmerSuppression(context, modele),
+                          onPressed: () =>
+                              _confirmerSuppression(context, modele),
                         ),
                         onTap: () => context.push('/modeles/${modele.id}'),
                       ),
