@@ -31,4 +31,15 @@ class MetierRegistry {
   static MetierConfig getByType(TypeAtelier type) {
     return metiers[type.id] ?? autreConfig;
   }
+
+  /// Récupère le libellé (label) d'un champ à partir de sa clé (key)
+  /// et de la config du métier. Si pas trouvé, retourne la clé.
+  static String getFieldLabel(String metierKey, String fieldKey) {
+    final config = getById(metierKey);
+    try {
+      return config.champs.firstWhere((c) => c.key == fieldKey).label;
+    } catch (_) {
+      return fieldKey;
+    }
+  }
 }
