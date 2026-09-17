@@ -1,1 +1,2 @@
 - [Replit environment values](replit-env-values.md) — values entered as shared variables can be written into `.replit`; use secrets for configuration that must stay out of Git.
+- [Firebase rules synchronization](firebase-rules-sync.md) — keep root and `firebase/` rule copies identical because neither is generated from the other.

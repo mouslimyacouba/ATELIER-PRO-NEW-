@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -16,11 +17,15 @@ import 'package:image_picker/image_picker.dart';
 /// manquant", juste "objet introuvable".
 class StorageService {
   static final _storage = FirebaseStorage.instance;
+  static final _auth = FirebaseAuth.instance;
   static final _picker = ImagePicker();
+  static const _privateBuckets = {'photos', 'commandes', 'modeles_etapes'};
+  static const _knownBuckets = {'logos', ..._privateBuckets};
 
   /// Ouvre le sélecteur d'image (galerie), compresse légèrement, et retourne
   /// le fichier choisi. Retourne null si l'utilisateur annule.
-  static Future<File?> pickImage({ImageSource source = ImageSource.gallery}) async {
+  static Future<File?> pickImage(
+      {ImageSource source = ImageSource.gallery}) async {
     final picked = await _picker.pickImage(
       source: source,
       maxWidth: 1024,
@@ -42,8 +47,24 @@ class StorageService {
     required String key,
     required File file,
   }) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) {
+      throw Exception('Utilisateur non connecté.');
+    }
+    if (currentUserId != userId) {
+      throw Exception('Atelier non autorisé pour cet envoi.');
+    }
+    if (!_knownBuckets.contains(bucket)) {
+      throw ArgumentError.value(
+          bucket, 'bucket', 'Dossier de stockage non autorisé.');
+    }
+    if (key.isEmpty || key.contains('/') || key.contains('\\')) {
+      throw ArgumentError.value(key, 'key', 'Clé de fichier invalide.');
+    }
+
     if (!await file.exists()) {
-      throw Exception('Le fichier image sélectionné est introuvable sur l\'appareil.');
+      throw Exception(
+          'Le fichier image sélectionné est introuvable sur l\'appareil.');
     }
 
     // Extension nettoyée : certains chemins retournés par le sélecteur
@@ -73,7 +94,8 @@ class StorageService {
     }
 
     if (snapshot.state != TaskState.success) {
-      throw Exception('L\'envoi ne s\'est pas terminé correctement (état: ${snapshot.state}).');
+      throw Exception(
+          'L\'envoi ne s\'est pas terminé correctement (état: ${snapshot.state}).');
     }
 
     return await ref.getDownloadURL();
