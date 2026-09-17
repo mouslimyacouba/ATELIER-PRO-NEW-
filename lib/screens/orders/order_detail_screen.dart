@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/contact_actions.dart';
 import '../../core/storage_service.dart';
 import '../../core/theme.dart';
+import '../../core/config/metier_config.dart';
 import '../../models/atelier.dart';
 import '../../models/client.dart';
 import '../../models/historique_entry.dart';
@@ -14,9 +15,11 @@ import '../../models/payment.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/clients_provider.dart';
 import '../../providers/orders_provider.dart';
+import '../../providers/metier_provider.dart';
 import '../../widgets/spinner.dart';
 
-final _money = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
+final _money =
+    NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
 final _date = DateFormat('dd/MM/yyyy à HH:mm');
 final _dateShort = DateFormat('dd/MM/yyyy');
 
@@ -34,7 +37,8 @@ String _buildReceiptText({
   buffer.writeln('Commande : ${order.description}');
   buffer.writeln('Date : ${_dateShort.format(order.dateCommande)}');
   if (order.dateEcheance != null) {
-    buffer.writeln('Livraison prévue : ${_dateShort.format(order.dateEcheance!)}');
+    buffer.writeln(
+        'Livraison prévue : ${_dateShort.format(order.dateEcheance!)}');
   }
   buffer.writeln('Statut : ${order.status.label}');
   buffer.writeln('—————————————');
@@ -42,13 +46,16 @@ String _buildReceiptText({
   if (payments.isNotEmpty) {
     buffer.writeln('Paiements :');
     for (final p in payments) {
-      buffer.writeln('  • ${_dateShort.format(p.datePaiement)} — ${_money.format(p.montant)} (${p.modeLabel})');
+      buffer.writeln(
+          '  • ${_dateShort.format(p.datePaiement)} — ${_money.format(p.montant)} (${p.modeLabel})');
     }
   }
   buffer.writeln('Payé : ${_money.format(order.acompte)}');
   buffer.writeln('Reste à payer : ${_money.format(order.remaining)}');
   buffer.writeln('—————————————');
-  buffer.writeln(order.isFullyPaid ? '✅ Commande soldée. Merci !' : 'Merci de votre confiance 🙏');
+  buffer.writeln(order.isFullyPaid
+      ? '✅ Commande soldée. Merci !'
+      : 'Merci de votre confiance 🙏');
   return buffer.toString();
 }
 
@@ -74,13 +81,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         key: '${order.id}_${DateTime.now().millisecondsSinceEpoch}',
         file: file,
       );
-      final error = await context.read<OrdersProvider>().addPhoto(order.id, url);
+      final error =
+          await context.read<OrdersProvider>().addPhoto(order.id, url);
       if (mounted && error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error)));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _uploadingPhoto = false);
@@ -93,10 +103,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Supprimer cette photo ?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Annuler')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Supprimer', style: TextStyle(color: AtelierProColors.rougeAlerte)),
+            child: const Text('Supprimer',
+                style: TextStyle(color: AtelierProColors.rougeAlerte)),
           ),
         ],
       ),
@@ -127,14 +140,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Enregistrer un paiement', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const Text('Enregistrer un paiement',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text('Reste dû : ${_money.format(order.remaining)}', style: const TextStyle(color: AtelierProColors.onSurfaceVariant)),
+                Text('Reste dû : ${_money.format(order.remaining)}',
+                    style: const TextStyle(
+                        color: AtelierProColors.onSurfaceVariant)),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: amountCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Montant reçu (FCFA)'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: 'Montant reçu (FCFA)'),
                   validator: (v) {
                     final n = double.tryParse((v ?? '').replaceAll(',', '.'));
                     if (n == null || n <= 0) return 'Montant invalide';
@@ -144,9 +163,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   value: method,
-                  decoration: const InputDecoration(labelText: 'Mode de paiement'),
+                  decoration:
+                      const InputDecoration(labelText: 'Mode de paiement'),
                   items: AtelierPayment.modeLabels.entries
-                      .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                      .map((e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)))
                       .toList(),
                   onChanged: (v) => setSheetState(() => method = v ?? method),
                 ),
@@ -154,22 +175,26 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const Text(
                   "L'encaissement automatique par mobile money (iPayMoney) arrive dans une prochaine version. "
                   "Pour l'instant, saisissez le paiement manuellement après réception.",
-                  style: TextStyle(fontSize: 12, color: AtelierProColors.onSurfaceMuted),
+                  style: TextStyle(
+                      fontSize: 12, color: AtelierProColors.onSurfaceMuted),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () async {
                     if (!formKey.currentState!.validate()) return;
-                    final amount = double.parse(amountCtrl.text.replaceAll(',', '.'));
-                    final error = await context.read<OrdersProvider>().recordPayment(
-                          orderId: order.id,
-                          userId: order.userId,
-                          amount: amount,
-                          mode: method,
-                        );
+                    final amount =
+                        double.parse(amountCtrl.text.replaceAll(',', '.'));
+                    final error =
+                        await context.read<OrdersProvider>().recordPayment(
+                              orderId: order.id,
+                              userId: order.userId,
+                              amount: amount,
+                              mode: method,
+                            );
                     if (ctx.mounted) {
                       if (error != null) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(error)));
+                        ScaffoldMessenger.of(ctx)
+                            .showSnackBar(SnackBar(content: Text(error)));
                       } else {
                         Navigator.of(ctx).pop(true);
                       }
@@ -185,31 +210,38 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
 
     if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Paiement enregistré')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Paiement enregistré')));
     }
   }
 
   Future<void> _shareReceipt(AtelierOrder order, AtelierClient? client) async {
     final atelier = context.read<AtelierProvider>().atelier;
     final payments = context.read<OrdersProvider>().paymentsForOrder(order.id);
-    final text = _buildReceiptText(atelier: atelier, client: client, order: order, payments: payments);
+    final text = _buildReceiptText(
+        atelier: atelier, client: client, order: order, payments: payments);
     await Share.share(text, subject: 'Reçu - ${client?.nomComplet ?? ''}');
   }
 
-  Future<void> _sendReceiptWhatsApp(AtelierOrder order, AtelierClient? client) async {
+  Future<void> _sendReceiptWhatsApp(
+      AtelierOrder order, AtelierClient? client) async {
     if (client?.telephone == null || client!.telephone!.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ce client n\'a pas de numéro de téléphone enregistré')),
+        const SnackBar(
+            content:
+                Text('Ce client n\'a pas de numéro de téléphone enregistré')),
       );
       return;
     }
     final atelier = context.read<AtelierProvider>().atelier;
     final payments = context.read<OrdersProvider>().paymentsForOrder(order.id);
-    final text = _buildReceiptText(atelier: atelier, client: client, order: order, payments: payments);
+    final text = _buildReceiptText(
+        atelier: atelier, client: client, order: order, payments: payments);
     await openWhatsApp(client.telephone!, message: text);
   }
 
-  Future<void> _sendPaymentReminder(AtelierOrder order, AtelierClient? client) async {
+  Future<void> _sendPaymentReminder(
+      AtelierOrder order, AtelierClient? client) async {
     if (client?.telephone == null || client!.telephone!.trim().isEmpty) return;
     final atelier = context.read<AtelierProvider>().atelier;
     final message =
@@ -219,8 +251,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     await openWhatsApp(client.telephone!, message: message);
   }
 
-  Future<void> _sendDeliveryReminder(AtelierOrder order, AtelierClient? client) async {
-    if (client?.telephone == null || client!.telephone!.trim().isEmpty || order.dateEcheance == null) return;
+  Future<void> _sendDeliveryReminder(
+      AtelierOrder order, AtelierClient? client) async {
+    if (client?.telephone == null ||
+        client!.telephone!.trim().isEmpty ||
+        order.dateEcheance == null) return;
     final atelier = context.read<AtelierProvider>().atelier;
     final message =
         'Bonjour ${client.nomComplet}, votre commande "${order.description}" chez '
@@ -231,7 +266,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<void> _editOrder(AtelierOrder order) async {
     final descCtrl = TextEditingController(text: order.description);
-    final amountCtrl = TextEditingController(text: order.prixTotal.toStringAsFixed(0));
+    final amountCtrl =
+        TextEditingController(text: order.prixTotal.toStringAsFixed(0));
     final formKey = GlobalKey<FormState>();
 
     final saved = await showModalBottomSheet<bool>(
@@ -250,19 +286,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Modifier la commande', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('Modifier la commande',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               TextFormField(
                 controller: descCtrl,
                 maxLines: 3,
                 decoration: const InputDecoration(labelText: 'Description'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Description requise' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Description requise'
+                    : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Montant total (FCFA)'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration:
+                    const InputDecoration(labelText: 'Montant total (FCFA)'),
                 validator: (v) {
                   final n = double.tryParse((v ?? '').replaceAll(',', '.'));
                   if (n == null || n <= 0) return 'Montant invalide';
@@ -276,14 +317,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ElevatedButton(
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
-                  final error = await context.read<OrdersProvider>().updateOrder(
+                  final error = await context
+                      .read<OrdersProvider>()
+                      .updateOrder(
                         order.id,
                         description: descCtrl.text.trim(),
-                        prixTotal: double.parse(amountCtrl.text.replaceAll(',', '.')),
+                        prixTotal:
+                            double.parse(amountCtrl.text.replaceAll(',', '.')),
                       );
                   if (ctx.mounted) {
                     if (error != null) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(error)));
+                      ScaffoldMessenger.of(ctx)
+                          .showSnackBar(SnackBar(content: Text(error)));
                     } else {
                       Navigator.of(ctx).pop(true);
                     }
@@ -298,7 +343,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
 
     if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Commande mise à jour')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Commande mise à jour')));
     }
   }
 
@@ -307,12 +353,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Supprimer cette commande ?'),
-        content: const Text('Les paiements associés seront également supprimés. Cette action est irréversible.'),
+        content: const Text(
+            'Les paiements associés seront également supprimés. Cette action est irréversible.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Annuler')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Supprimer', style: TextStyle(color: AtelierProColors.rougeAlerte)),
+            child: const Text('Supprimer',
+                style: TextStyle(color: AtelierProColors.rougeAlerte)),
           ),
         ],
       ),
@@ -322,7 +372,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final error = await context.read<OrdersProvider>().deleteOrder(order.id);
     if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
     } else {
       context.go('/commandes');
     }
@@ -331,8 +382,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final order = context.watch<OrdersProvider>().byId(widget.orderId);
-    final client = order == null ? null : context.watch<ClientsProvider>().byId(order.clientId);
-    final payments = order == null ? <AtelierPayment>[] : context.watch<OrdersProvider>().paymentsForOrder(order.id);
+    final client = order == null
+        ? null
+        : context.watch<ClientsProvider>().byId(order.clientId);
+    final payments = order == null
+        ? <AtelierPayment>[]
+        : context.watch<OrdersProvider>().paymentsForOrder(order.id);
     final historique = order == null
         ? <HistoriqueEntry>[]
         : context.watch<OrdersProvider>().historiqueForOrder(order.id);
@@ -345,8 +400,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       appBar: AppBar(
         title: Text(client?.nomComplet ?? 'Commande'),
         actions: [
-          IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => _editOrder(order)),
-          IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _confirmDeleteOrder(order)),
+          IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => _editOrder(order)),
+          IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _confirmDeleteOrder(order)),
         ],
       ),
       body: ListView(
@@ -361,23 +420,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     order.numeroFormate.isNotEmpty
                         ? order.numeroFormate
                         : 'COMMANDE #${order.id.substring(0, 4).toUpperCase()}',
-                    style: AtelierProTheme.dataStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AtelierProColors.primary),
+                    style: AtelierProTheme.dataStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AtelierProColors.primary),
                   ),
                   const SizedBox(width: 8),
-                  StatusPill(label: order.status.label, color: order.status.color),
+                  StatusPill(
+                      label: order.status.label, color: order.status.color),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(order.description, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+          Text(order.description,
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(client?.nomComplet ?? 'Client', style: TextStyle(color: AtelierProColors.onSurfaceVariant)),
+          Text(client?.nomComplet ?? 'Client',
+              style: TextStyle(color: AtelierProColors.onSurfaceVariant)),
           if (order.dateEcheance != null) ...[
             const SizedBox(height: 4),
             Text(
               'Livraison prévue : ${DateFormat('dd/MM/yyyy').format(order.dateEcheance!)}',
-              style: const TextStyle(color: AtelierProColors.onSurfaceVariant, fontSize: 13),
+              style: const TextStyle(
+                  color: AtelierProColors.onSurfaceVariant, fontSize: 13),
             ),
           ],
           const SizedBox(height: 16),
@@ -392,18 +459,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Prix Total', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    const Text('Prix Total',
+                        style: TextStyle(color: Colors.white70, fontSize: 13)),
                     Text(_money.format(order.prixTotal),
-                        style: AtelierProTheme.dataStyle(color: Colors.white, fontSize: 14)),
+                        style: AtelierProTheme.dataStyle(
+                            color: Colors.white, fontSize: 14)),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Acompte payé', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    const Text('Acompte payé',
+                        style: TextStyle(color: Colors.white70, fontSize: 13)),
                     Text('+ ${_money.format(order.acompte)}',
-                        style: AtelierProTheme.dataStyle(color: const Color(0xFF6EE7B7), fontSize: 14)),
+                        style: AtelierProTheme.dataStyle(
+                            color: const Color(0xFF6EE7B7), fontSize: 14)),
                   ],
                 ),
                 const Padding(
@@ -413,11 +484,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Solde restant', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                    const Text('Solde restant',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700)),
                     Text(
                       _money.format(order.remaining),
                       style: AtelierProTheme.dataStyle(
-                        color: order.isFullyPaid ? const Color(0xFF6EE7B7) : const Color(0xFFFFDB94),
+                        color: order.isFullyPaid
+                            ? const Color(0xFF6EE7B7)
+                            : const Color(0xFFFFDB94),
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
@@ -439,13 +516,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
               OutlinedButton.icon(
                 onPressed: () => _sendReceiptWhatsApp(order, client),
-                icon: const Icon(Icons.chat, size: 16, color: Color(0xFF25D366)),
+                icon:
+                    const Icon(Icons.chat, size: 16, color: Color(0xFF25D366)),
                 label: const Text('Reçu WhatsApp'),
               ),
               if (!order.isFullyPaid)
                 OutlinedButton.icon(
                   onPressed: () => _sendPaymentReminder(order, client),
-                  icon: const Icon(Icons.notifications_active_outlined, size: 16, color: AtelierProColors.orangeAttente),
+                  icon: const Icon(Icons.notifications_active_outlined,
+                      size: 16, color: AtelierProColors.orangeAttente),
                   label: const Text('Rappel paiement'),
                 ),
               if (order.dateEcheance != null)
@@ -467,20 +546,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ChoiceChip(
                   label: Text(status.label),
                   selected: order.status == status,
-                  onSelected: (_) => context.read<OrdersProvider>().updateStatus(order.id, status),
+                  onSelected: (_) => context
+                      .read<OrdersProvider>()
+                      .updateStatus(order.id, status),
                   selectedColor: status.color.withValues(alpha: 0.15),
                   labelStyle: TextStyle(
-                    color: order.status == status ? status.color : AtelierProColors.onSurfaceVariant,
-                    fontWeight: order.status == status ? FontWeight.w700 : FontWeight.w400,
+                    color: order.status == status
+                        ? status.color
+                        : AtelierProColors.onSurfaceVariant,
+                    fontWeight: order.status == status
+                        ? FontWeight.w700
+                        : FontWeight.w400,
                   ),
                   backgroundColor: AtelierProColors.surfaceContainer,
-                  side: BorderSide(color: order.status == status ? status.color : AtelierProColors.outlineVariant),
+                  side: BorderSide(
+                      color: order.status == status
+                          ? status.color
+                          : AtelierProColors.outlineVariant),
                 ),
             ],
           ),
-          if (order.specificationsMetier != null && order.specificationsMetier!.isNotEmpty) ...[
+          if (order.specificationsMetier != null &&
+              order.specificationsMetier!.isNotEmpty) ...[
             const SizedBox(height: 24),
-            const Text('Détails & Spécifications du métier', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const Text('Détails & Spécifications du métier',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -489,41 +579,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AtelierProColors.outlineVariant),
               ),
-              child: Column(
-                children: [
-                  for (final entry in order.specificationsMetier!.entries)
-                    if (entry.value.toString().trim().isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${entry.key} : ',
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AtelierProColors.secondary),
-                            ),
-                            Expanded(
-                              child: Text(
-                                entry.value.toString(),
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                ],
-              ),
+              child: _buildSpecificationsMetier(order),
             ),
           ],
-          if (order.etapesSnapshot != null && order.etapesSnapshot!.isNotEmpty) ...[
+          if (order.etapesSnapshot != null &&
+              order.etapesSnapshot!.isNotEmpty) ...[
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Étapes de fabrication', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const Text('Étapes de fabrication',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 Text(
                   '${order.etapesCompletes}/${order.etapesSnapshot!.length}',
-                  style: const TextStyle(color: AtelierProColors.onSurfaceVariant),
+                  style:
+                      const TextStyle(color: AtelierProColors.onSurfaceVariant),
                 ),
               ],
             ),
@@ -538,8 +609,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            for (final etape in (List<Map<String, dynamic>>.from(order.etapesSnapshot!)
-              ..sort((a, b) => (a['ordre'] as int).compareTo(b['ordre'] as int))))
+            for (final etape
+                in (List<Map<String, dynamic>>.from(order.etapesSnapshot!)
+                  ..sort((a, b) =>
+                      (a['ordre'] as int).compareTo(b['ordre'] as int))))
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: etape['terminee'] == true,
@@ -555,12 +628,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Photos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              const Text('Photos',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               TextButton.icon(
                 onPressed: _uploadingPhoto ? null : () => _addPhoto(order),
                 icon: _uploadingPhoto
                     ? const SizedBox(
-                        width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.add_a_photo_outlined, size: 18),
                 label: const Text('Ajouter'),
               ),
@@ -585,7 +661,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     onLongPress: () => _removePhoto(order, url),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.network(url, width: 96, height: 96, fit: BoxFit.cover),
+                      child: Image.network(url,
+                          width: 96, height: 96, fit: BoxFit.cover),
                     ),
                   );
                 },
@@ -595,7 +672,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Paiements', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              const Text('Paiements',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               if (!order.isFullyPaid)
                 TextButton.icon(
                   onPressed: () => _addPayment(order),
@@ -614,9 +692,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: const Icon(Icons.check_circle, color: AtelierProColors.vertSucces),
+                  leading: const Icon(Icons.check_circle,
+                      color: AtelierProColors.vertSucces),
                   title: Text(_money.format(p.montant)),
-                  subtitle: Text('${p.modeLabel} · ${_date.format(p.datePaiement)}'),
+                  subtitle:
+                      Text('${p.modeLabel} · ${_date.format(p.datePaiement)}'),
                 ),
               ),
           if (historique.isNotEmpty) ...[
@@ -634,7 +714,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       children: [
                         const Padding(
                           padding: EdgeInsets.only(top: 4, right: 8),
-                          child: Icon(Icons.history, size: 14, color: AtelierProColors.onSurfaceMuted),
+                          child: Icon(Icons.history,
+                              size: 14, color: AtelierProColors.onSurfaceMuted),
                         ),
                         Expanded(
                           child: Column(
@@ -648,7 +729,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               ),
                               Text(
                                 _date.format(h.createdAt),
-                                style: const TextStyle(fontSize: 11, color: AtelierProColors.onSurfaceMuted),
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AtelierProColors.onSurfaceMuted),
                               ),
                             ],
                           ),
@@ -662,5 +745,54 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ],
       ),
     );
+  }
+
+  /// Construit le widget affichant les spécifications du métier avec libellés lisibles
+  Widget _buildSpecificationsMetier(AtelierOrder order) {
+    // Récupère la config du métier depuis le provider pour mapper clés → libellés
+    final metierConfig = context.watch<MetierProvider>().config;
+
+    return Column(
+      children: [
+        for (final entry in order.specificationsMetier!.entries)
+          if (entry.value.toString().trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Utilise MetierRegistry pour trouver le libellé lisible
+                  // Fallback sur le MetierProvider si disponible
+                  Text(
+                    '${_getFieldLabel(entry.key, metierConfig)} : ',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AtelierProColors.secondary),
+                  ),
+                  Expanded(
+                    child: Text(
+                      entry.value.toString(),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      ],
+    );
+  }
+
+  /// Helper pour récupérer le libellé d'un champ (label) à partir de sa clé
+  String _getFieldLabel(String fieldKey, MetierConfig? metierConfig) {
+    if (metierConfig != null) {
+      try {
+        return metierConfig.champs.firstWhere((c) => c.key == fieldKey).label;
+      } catch (_) {
+        // Si pas trouvé, continue
+      }
+    }
+    // Fallback : retourne la clé
+    return fieldKey;
   }
 }
