@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthProvider extends ChangeNotifier {
   final _auth = FirebaseAuth.instance;
@@ -81,10 +82,12 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> signUp({required String email, required String password}) async {
+  Future<String?> signUp(
+      {required String email, required String password}) async {
     try {
       _error = null;
-      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      await _auth.createUserWithEmailAndPassword(
+          email: email, password: password);
       return null;
     } on FirebaseAuthException catch (e) {
       _error = _messageFor(e);
@@ -93,7 +96,8 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> signIn({required String email, required String password}) async {
+  Future<String?> signIn(
+      {required String email, required String password}) async {
     try {
       _error = null;
       await _auth.signInWithEmailAndPassword(email: email, password: password);
@@ -159,9 +163,18 @@ class AuthProvider extends ChangeNotifier {
   Future<(String?, bool)> signInWithGoogle() async {
     try {
       _error = null;
-      final googleUser = await GoogleSignIn().signIn();
+      // On récupère le Client ID Web depuis l'environnement. Nécessaire pour
+      // le Web et recommandé sur Android quand le plugin google-services
+      // n'est pas utilisé (pour éviter les erreurs 10 ou 12500).
+      final clientId = dotenv.env['FIREBASE_WEB_CLIENT_ID'];
+      final googleSignIn = GoogleSignIn(clientId: clientId);
+
+      final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        return ('Connexion annulée.', false); // l'utilisateur a fermé la fenêtre Google
+        return (
+          'Connexion annulée.',
+          false
+        ); // l'utilisateur a fermé la fenêtre Google
       }
       final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -176,7 +189,10 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return (_error, false);
     } catch (e) {
-      return ('Connexion Google impossible. Vérifie ta connexion et réessaie.', false);
+      return (
+        'Connexion Google impossible. Vérifie ta configuration Firebase.',
+        false
+      );
     }
   }
 
@@ -202,7 +218,8 @@ class AuthProvider extends ChangeNotifier {
         verificationCompleted: (credential) async {
           try {
             final userCredential = await _auth.signInWithCredential(credential);
-            final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+            final isNewUser =
+                userCredential.additionalUserInfo?.isNewUser ?? false;
             onAutoVerified((null, isNewUser));
           } on FirebaseAuthException catch (e) {
             onAutoVerified((_messageFor(e), false));
@@ -250,7 +267,8 @@ class AuthProvider extends ChangeNotifier {
     // sans même demander confirmation. Sans effet si la session n'était pas
     // une session Google (ne lève pas d'erreur).
     try {
-      await GoogleSignIn().signOut();
+      final clientId = dotenv.env['FIREBASE_WEB_CLIENT_ID'];
+      await GoogleSignIn(clientId: clientId).signOut();
     } catch (_) {
       // ignore — pas grave si l'utilisateur n'était pas connecté via Google
     }
