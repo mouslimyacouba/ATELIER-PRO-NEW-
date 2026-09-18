@@ -26,13 +26,14 @@ Future<void> main() async {
 
   try {
     await dotenv.load(fileName: '.env', isOptional: true);
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  } on FirebaseConfigurationException catch (error) {
-    configurationError = error.message;
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
   } on FirebaseException catch (error) {
     configurationError =
-        'Firebase n’a pas pu démarrer : ${error.message ?? error.code}. '
+        'Firebase n\'a pas pu démarrer : ${error.message ?? error.code}. '
         'Vérifie les variables de configuration.';
+  } catch (error) {
+    configurationError = 'Erreur de configuration : $error';
   }
 
   if (configurationError != null) {
@@ -67,7 +68,8 @@ class AtelierProApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StockProvider()),
         ChangeNotifierProxyProvider<AtelierProvider, MetierProvider>(
           create: (context) => MetierProvider(context.read<AtelierProvider>()),
-          update: (context, atelier, previous) => previous ?? MetierProvider(atelier),
+          update: (context, atelier, previous) =>
+              previous ?? MetierProvider(atelier),
         ),
       ],
       child: Builder(
@@ -117,11 +119,6 @@ class FirebaseSetupRequiredApp extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(message),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Ajoute les valeurs dans les secrets ou variables '
-                    'd’environnement Replit, puis redémarre le workflow.',
-                  ),
                 ],
               ),
             ),
