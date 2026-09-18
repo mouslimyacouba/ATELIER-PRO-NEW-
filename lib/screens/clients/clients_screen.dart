@@ -5,7 +5,7 @@ import '../../core/theme.dart';
 import '../../models/client.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/clients_provider.dart';
-import '../../widgets/error_banner.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/spinner.dart';
 
 class ClientsScreen extends StatefulWidget {
@@ -155,7 +155,6 @@ class _ClientsScreenState extends State<ClientsScreen> {
       appBar: AppBar(title: const Text('Clients')),
       body: Column(
         children: [
-          if (clientsProvider.error != null) ErrorBanner(message: clientsProvider.error!),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
@@ -174,40 +173,55 @@ class _ClientsScreenState extends State<ClientsScreen> {
                 if (userId != null) await context.read<ClientsProvider>().load(userId);
               },
               child: clientsProvider.loading && clientsProvider.clients.isEmpty
-                  ? ListView(children: const [SizedBox(height: 200), AtelierSpinner()])
-                  : filtered.isEmpty
-                      ? ListView(
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(child: Text('Aucun client')),
-                          ],
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (context, i) {
-                            final client = filtered[i];
-                            return Card(
-                              child: ListTile(
-                                onTap: () => context.go('/clients/${client.id}'),
-                                leading: CircleAvatar(
-                                  backgroundColor: AtelierProColors.terracotta.withValues(alpha: 0.12),
-                                  backgroundImage: client.photoUrl != null ? NetworkImage(client.photoUrl!) : null,
-                                  child: client.photoUrl == null
-                                      ? Text(
-                                          client.nomComplet.isNotEmpty ? client.nomComplet[0].toUpperCase() : '?',
-                                          style: const TextStyle(color: AtelierProColors.terracotta),
-                                        )
-                                      : null,
-                                ),
-                                title: Text(client.nomComplet),
-                                subtitle: Text(client.telephone ?? 'Pas de téléphone'),
-                                trailing: const Icon(Icons.chevron_right),
-                              ),
-                            );
+                  ? const AtelierSpinner()
+                  : clientsProvider.error != null && clientsProvider.clients.isEmpty
+                      ? ErrorState(
+                          message: clientsProvider.error!,
+                          onRetry: () {
+                            final userId = context.read<AtelierProvider>().atelier?.userId;
+                            if (userId != null) context.read<ClientsProvider>().load(userId);
                           },
-                        ),
+                        )
+                      : filtered.isEmpty
+                          ? _query.isNotEmpty
+                              ? EmptyState(
+                                  icon: Icons.search_off,
+                                  title: 'Aucun résultat',
+                                  subtitle: 'Aucun client ne correspond à "$_query".',
+                                )
+                              : EmptyState(
+                                  icon: Icons.people_outline,
+                                  title: 'Aucun client',
+                                  subtitle: 'Ajoutez votre premier client pour commencer.',
+                                  actionLabel: 'Ajouter un client',
+                                  onAction: () => _openForm(),
+                                )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              itemBuilder: (context, i) {
+                                final client = filtered[i];
+                                return Card(
+                                  child: ListTile(
+                                    onTap: () => context.go('/clients/${client.id}'),
+                                    leading: CircleAvatar(
+                                      backgroundColor: AtelierProColors.terracotta.withValues(alpha: 0.12),
+                                      backgroundImage: client.photoUrl != null ? NetworkImage(client.photoUrl!) : null,
+                                      child: client.photoUrl == null
+                                          ? Text(
+                                              client.nomComplet.isNotEmpty ? client.nomComplet[0].toUpperCase() : '?',
+                                              style: const TextStyle(color: AtelierProColors.terracotta),
+                                            )
+                                          : null,
+                                    ),
+                                    title: Text(client.nomComplet),
+                                    subtitle: Text(client.telephone ?? 'Pas de téléphone'),
+                                    trailing: const Icon(Icons.chevron_right),
+                                  ),
+                                );
+                              },
+                            ),
             ),
           ),
         ],

@@ -34,11 +34,15 @@ String _buildReceiptText({
   if (atelier?.telephone != null) buffer.writeln('☎️ ${atelier!.telephone}');
   buffer.writeln('—————————————');
   buffer.writeln('Client : ${client?.nomComplet ?? '—'}');
+  if (client?.telephone != null) buffer.writeln('📞 ${client!.telephone}');
+  if (order.numeroFormate.isNotEmpty) buffer.writeln('Réf. : ${order.numeroFormate}');
   buffer.writeln('Commande : ${order.description}');
   buffer.writeln('Date : ${_dateShort.format(order.dateCommande)}');
   if (order.dateEcheance != null) {
+    final isLate = order.dateEcheance!.isBefore(DateTime.now()) &&
+        order.status != OrderStatus.livre;
     buffer.writeln(
-        'Livraison prévue : ${_dateShort.format(order.dateEcheance!)}');
+        'Livraison prévue : ${_dateShort.format(order.dateEcheance!)}${isLate ? ' ⚠️ EN RETARD' : ''}');
   }
   buffer.writeln('Statut : ${order.status.label}');
   buffer.writeln('—————————————');
@@ -51,7 +55,9 @@ String _buildReceiptText({
     }
   }
   buffer.writeln('Payé : ${_money.format(order.acompte)}');
-  buffer.writeln('Reste à payer : ${_money.format(order.remaining)}');
+  if (!order.isFullyPaid) {
+    buffer.writeln('*Reste à payer : ${_money.format(order.remaining)}*');
+  }
   buffer.writeln('—————————————');
   buffer.writeln(order.isFullyPaid
       ? '✅ Commande soldée. Merci !'
@@ -375,7 +381,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error)));
     } else {
-      context.go('/commandes');
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/commandes');
+      }
     }
   }
 
@@ -399,6 +409,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(client?.nomComplet ?? 'Commande'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/commandes');
+            }
+          },
+        ),
         actions: [
           IconButton(
               icon: const Icon(Icons.edit_outlined),

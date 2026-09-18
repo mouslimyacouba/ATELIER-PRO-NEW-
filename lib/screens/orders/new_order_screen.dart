@@ -181,7 +181,12 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
 
       if (result == null) {
         setState(() => _loading = false);
-        context.go('/commandes');
+        if (!mounted) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/commandes');
+        }
       } else {
         setState(() {
           _loading = false;
@@ -226,6 +231,16 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     return AppBar(
       title: const Text('Nouvelle Commande'),
       backgroundColor: AtelierProColors.surfaceContainer,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/commandes');
+          }
+        },
+      ),
     );
   }
 
@@ -338,8 +353,10 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
           controller: _descCtrl,
           maxLines: 2,
           decoration: const InputDecoration(
-              labelText: 'Description de la commande',
+              labelText: 'Description de la commande *',
               border: OutlineInputBorder()),
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'La description est requise' : null,
         ),
         const SizedBox(height: 16),
         TextFormField(
@@ -349,6 +366,12 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
           decoration: const InputDecoration(
               labelText: 'Prix de vente au client (FCFA) *',
               border: OutlineInputBorder()),
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return 'Le prix est requis';
+            final amount = double.tryParse(v.replaceAll(',', '.'));
+            if (amount == null || amount < 0) return 'Montant invalide';
+            return null;
+          },
         ),
         const SizedBox(height: 24),
         const Text(

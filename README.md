@@ -543,19 +543,11 @@ Puis renseigner les valeurs nécessaires.
 
 Le fichier `.env` doit rester dans `.gitignore`.
 
-### Configuration Replit et premiers tests
+### Configuration locale
 
-Le projet cible le web dans Replit pour les premiers tests. Flutter est fourni
-par le paquet Nix déclaré dans `.replit`, et le workflow web écoute sur
-`0.0.0.0:5000`.
-
-Les variables Firebase doivent être enregistrées dans les secrets ou variables
-d'environnement Replit avec les noms présents dans `.env.example`. Le workflow
-les matérialise dans le fichier local ignoré `.env` avant de lancer Flutter.
-En local, la même préparation peut être lancée avec :
+Les variables Firebase doivent être renseignées dans un fichier `.env` à la racine du projet avec les noms présents dans `.env.example`.
 
 ```bash
-bash tool/prepare_firebase_env.sh
 flutter pub get
 flutter analyze
 flutter test

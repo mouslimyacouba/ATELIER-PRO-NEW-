@@ -47,6 +47,16 @@ class _CommandesHistoriqueScreenState extends State<CommandesHistoriqueScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historique des commandes'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
       ),
       body: Column(
         children: [

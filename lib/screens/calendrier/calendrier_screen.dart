@@ -68,7 +68,19 @@ class _CalendrierScreenState extends State<CalendrierScreen> {
     final jours = List.generate(42, (i) => debutGrille.add(Duration(days: i)));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Calendrier des échéances')),
+      appBar: AppBar(
+        title: const Text('Calendrier des échéances'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
+      ),
       body: Column(
         children: [
           Padding(

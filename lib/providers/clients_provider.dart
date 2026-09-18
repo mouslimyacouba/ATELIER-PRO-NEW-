@@ -46,13 +46,14 @@ class ClientsProvider extends ChangeNotifier {
     _sub = _firestore
         .collection('clients')
         .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
         .snapshots()
         .listen(
       (snapshot) {
         _clients = snapshot.docs
             .map((d) => AtelierClient.fromMap(d.id, d.data()))
             .toList();
-        _clients.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        // Tri serveur via orderBy() — plus de .sort() côté client
         _loading = false;
         _error = null;
         notifyListeners();

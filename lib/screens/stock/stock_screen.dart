@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -6,8 +7,8 @@ import '../../providers/stock_provider.dart';
 import '../../providers/atelier_provider.dart';
 import '../../core/theme.dart';
 import '../../models/stock_item.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/spinner.dart';
-import '../../widgets/error_banner.dart';
 
 final _money = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
 
@@ -65,8 +66,6 @@ class _StockScreenState extends State<StockScreen> {
       ),
       body: Column(
         children: [
-          if (stockProvider.error != null) ErrorBanner(message: stockProvider.error!),
-
           // Barre de filtres catégories
           if (categories.length > 1)
             SingleChildScrollView(
@@ -98,8 +97,16 @@ class _StockScreenState extends State<StockScreen> {
           Expanded(
             child: stockProvider.loading && items.isEmpty
                 ? const Center(child: AtelierSpinner())
-                : filteredItems.isEmpty
-                    ? _buildEmptyState()
+                : stockProvider.error != null && items.isEmpty
+                    ? ErrorState(
+                        message: stockProvider.error!,
+                        onRetry: () {
+                          final userId = context.read<AtelierProvider>().atelier?.userId;
+                          if (userId != null) stockProvider.load(userId);
+                        },
+                      )
+                    : filteredItems.isEmpty
+                        ? _buildEmptyState()
                     : RefreshIndicator(
                         onRefresh: () async {
                           final userId = context.read<AtelierProvider>().atelier?.userId;

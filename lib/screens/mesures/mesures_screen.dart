@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/fiche_templates.dart';
@@ -9,7 +10,7 @@ import '../../models/fiche_template.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/clients_provider.dart';
 import '../../providers/fiches_mesures_provider.dart';
-import '../../widgets/error_banner.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/spinner.dart';
 
 final _date = DateFormat('dd/MM/yyyy');
@@ -245,7 +246,6 @@ class _MesuresScreenState extends State<MesuresScreen> {
       appBar: AppBar(title: Text(template.nomFiche)),
       body: Column(
         children: [
-          if (fichesProvider.error != null) ErrorBanner(message: fichesProvider.error!),
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
@@ -253,14 +253,23 @@ class _MesuresScreenState extends State<MesuresScreen> {
                 if (userId != null) await context.read<FichesMesuresProvider>().load(userId);
               },
               child: fichesProvider.loading && fichesProvider.fiches.isEmpty
-                  ? ListView(children: const [SizedBox(height: 200), AtelierSpinner()])
-                  : fichesProvider.fiches.isEmpty
-                      ? ListView(
-                          children: [
-                            const SizedBox(height: 120),
-                            Center(child: Text('Aucune ${template.nomFiche.toLowerCase()}')),
-                          ],
+                  ? const AtelierSpinner()
+                  : fichesProvider.error != null && fichesProvider.fiches.isEmpty
+                      ? ErrorState(
+                          message: fichesProvider.error!,
+                          onRetry: () {
+                            final userId = context.read<AtelierProvider>().atelier?.userId;
+                            if (userId != null) context.read<FichesMesuresProvider>().load(userId);
+                          },
                         )
+                      : fichesProvider.fiches.isEmpty
+                          ? EmptyState(
+                              icon: Icons.description_outlined,
+                              title: 'Aucune fiche ${template.nomFiche.toLowerCase()}',
+                              subtitle: 'Ajoutez votre première fiche pour enregistrer les mesures.',
+                              actionLabel: clientsProvider.clients.isEmpty ? null : 'Nouvelle fiche',
+                              onAction: clientsProvider.clients.isEmpty ? null : () => _openForm(),
+                            )
                       : ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: fichesProvider.fiches.length,

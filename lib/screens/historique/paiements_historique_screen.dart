@@ -81,6 +81,16 @@ class _PaiementsHistoriqueScreenState extends State<PaiementsHistoriqueScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Journal de caisse & Paiements'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
       ),
       body: Column(
         children: [
