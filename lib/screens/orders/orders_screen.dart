@@ -6,7 +6,7 @@ import '../../core/theme.dart';
 import '../../models/order.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/orders_provider.dart';
-import '../../widgets/error_banner.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/spinner.dart';
 
 final _money =
@@ -75,8 +75,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       ),
       body: Column(
         children: [
-          if (ordersProvider.error != null)
-            ErrorBanner(message: ordersProvider.error!),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
@@ -128,42 +126,59 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   await context.read<OrdersProvider>().load(userId);
               },
               child: ordersProvider.loading && ordersProvider.orders.isEmpty
-                  ? ListView(
-                      children: const [SizedBox(height: 200), AtelierSpinner()])
-                  : list.isEmpty
-                      ? ListView(
-                          children: [
-                            SizedBox(height: 120),
-                            Center(
-                                child: Text(_query.isEmpty
-                                    ? 'Aucune commande'
-                                    : 'Aucun résultat')),
-                          ],
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          itemCount: list.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (context, i) {
-                            final order = list[i];
-                            return Card(
-                              child: ListTile(
-                                onTap: () =>
-                                    context.go('/commandes/${order.id}'),
-                                title: Text(order.clientName ?? 'Client'),
-                                subtitle: Text(
-                                  '${order.description}\n${_money.format(order.totalAmount)} · reste ${_money.format(order.remaining)}',
-                                  maxLines: 2,
-                                ),
-                                isThreeLine: true,
-                                trailing: StatusPill(
-                                    label: order.status.label,
-                                    color: order.status.color),
-                              ),
-                            );
+                  ? const AtelierSpinner()
+                  : ordersProvider.error != null && ordersProvider.orders.isEmpty
+                      ? ErrorState(
+                          message: ordersProvider.error!,
+                          onRetry: () {
+                            final userId = context.read<AtelierProvider>().atelier?.userId;
+                            if (userId != null) context.read<OrdersProvider>().load(userId);
                           },
-                        ),
+                        )
+                      : list.isEmpty
+                          ? _query.isNotEmpty
+                              ? EmptyState(
+                                  icon: Icons.search_off,
+                                  title: 'Aucun résultat',
+                                  subtitle: 'Aucune commande ne correspond à "$_query".',
+                                )
+                              : _filter != null
+                                  ? EmptyState(
+                                      icon: Icons.receipt_long_outlined,
+                                      title: 'Aucune commande "${_filter!.label}"',
+                                      subtitle: 'Il n\'y a pas encore de commande avec ce statut.',
+                                    )
+                                  : EmptyState(
+                                      icon: Icons.receipt_long_outlined,
+                                      title: 'Aucune commande',
+                                      subtitle: 'Créez votre première commande pour commencer le suivi.',
+                                      actionLabel: 'Nouvelle commande',
+                                      onAction: () => context.go('/commandes/nouvelle'),
+                                    )
+                          : ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              itemCount: list.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, i) {
+                                final order = list[i];
+                                return Card(
+                                  child: ListTile(
+                                    onTap: () =>
+                                        context.go('/commandes/${order.id}'),
+                                    title: Text(order.clientName ?? 'Client'),
+                                    subtitle: Text(
+                                      '${order.description}\n${_money.format(order.totalAmount)} · reste ${_money.format(order.remaining)}',
+                                      maxLines: 2,
+                                    ),
+                                    isThreeLine: true,
+                                    trailing: StatusPill(
+                                        label: order.status.label,
+                                        color: order.status.color),
+                                  ),
+                                );
+                              },
+                            ),
             ),
           ),
         ],

@@ -92,7 +92,11 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
     } else {
-      context.go('/clients');
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/clients');
+      }
     }
   }
 
@@ -110,6 +114,16 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(client.nomComplet),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/clients');
+            }
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),

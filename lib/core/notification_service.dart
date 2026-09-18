@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -45,7 +46,7 @@ class NotificationService {
     _initialized = true;
   }
 
-  static const _details = NotificationDetails(
+  static const _detailsLivraison = NotificationDetails(
     android: AndroidNotificationDetails(
       'livraisons',
       'Livraisons à venir',
@@ -56,11 +57,26 @@ class NotificationService {
     iOS: DarwinNotificationDetails(),
   );
 
+  static const _detailsRetard = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'retards',
+      'Commandes en retard',
+      channelDescription: 'Alertes pour les commandes dont la date de livraison est dépassée',
+      importance: Importance.max,
+      priority: Priority.high,
+      color: Color(0xFFB00020),
+    ),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+    ),
+  );
+
   /// ID stable et positif dérivé de l'id Firestore de la commande, décliné
-  /// en deux variantes (veille / jour J) pour ne jamais entrer en collision.
-  static int _idVeille(String orderId) => (orderId.hashCode & 0x7fffffff) ~/ 2;
-  static int _idJourJ(String orderId) =>
-      (orderId.hashCode & 0x7fffffff) ~/ 2 + 1;
+  /// en trois variantes pour ne jamais entrer en collision.
+  static int _idVeille(String orderId) => (orderId.hashCode & 0x7fffffff) ~/ 3;
+  static int _idJourJ(String orderId) => (orderId.hashCode & 0x7fffffff) ~/ 3 + 1;
+  static int _idRetard(String orderId) => (orderId.hashCode & 0x7fffffff) ~/ 3 + 2;
 
   static Future<void> _scheduleIfFuture(int id, String title, String body, DateTime when) async {
     final scheduled = tz.TZDateTime.from(when, tz.local);
@@ -71,7 +87,7 @@ class NotificationService {
         title,
         body,
         scheduled,
-        _details,
+        _detailsLivraison,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
@@ -82,7 +98,7 @@ class NotificationService {
         title,
         body,
         scheduled,
-        _details,
+        _detailsLivraison,
         androidScheduleMode: AndroidScheduleMode.inexact,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
@@ -93,10 +109,50 @@ class NotificationService {
   /// Replanifie l'ensemble des rappels à partir de la liste courante des
   /// commandes. À appeler après chaque mise à jour de la liste (voir
   /// OrdersProvider) — idempotent, pas cher côté OS.
+  ///
+  /// Notifie aussi immédiatement pour les commandes déjà en retard,
+  /// en groupant le résumé si plusieurs sont en retard.
   static Future<void> syncReminders(List<AtelierOrder> orders) async {
     if (!_initialized) return;
     await _plugin.cancelAll();
 
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+
+    final enRetard = orders.where((o) {
+      if (o.dateEcheance == null) return false;
+      if (o.status == OrderStatus.livre || o.status == OrderStatus.termine) return false;
+      return o.dateEcheance!.isBefore(todayOnly);
+    }).toList();
+
+    // Notification immédiate pour les commandes en retard
+    if (enRetard.isNotEmpty) {
+      if (enRetard.length == 1) {
+        final o = enRetard.first;
+        final client = o.clientName ?? 'un client';
+        final jours = todayOnly.difference(DateTime(
+          o.dateEcheance!.year,
+          o.dateEcheance!.month,
+          o.dateEcheance!.day,
+        )).inDays;
+        await _plugin.show(
+          _idRetard(o.id),
+          '⚠️ Commande en retard — ${o.numeroFormate}',
+          '$client attend "${o.description}" depuis $jours jour${jours > 1 ? 's' : ''}.',
+          _detailsRetard,
+        );
+      } else {
+        // Plusieurs retards — une seule notification groupée
+        await _plugin.show(
+          0xDEAD, // id fixe pour la notification groupée retards
+          '⚠️ ${enRetard.length} commandes en retard',
+          enRetard.map((o) => o.clientName ?? o.description).join(', '),
+          _detailsRetard,
+        );
+      }
+    }
+
+    // Rappels programmés veille / jour J pour commandes à venir
     for (final o in orders) {
       if (o.dateEcheance == null || o.status == OrderStatus.livre) continue;
       final client = o.clientName ?? 'un client';
