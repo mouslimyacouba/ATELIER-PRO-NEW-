@@ -24,6 +24,11 @@ class OrdersProvider extends ChangeNotifier {
   bool _loading = false;
   String? _error;
 
+  // Cache des calculs coûteux — mis à jour seulement quand _orders change
+  double _cachedChiffreAffairesTotal = 0;
+  double _cachedMontantRestantDu = 0;
+  List<AtelierOrder> _cachedEnRetard = [];
+
   List<AtelierOrder> get orders => _orders;
   List<AtelierPayment> get payments => _payments;
   List<HistoriqueEntry> get historique => _historique;
@@ -33,15 +38,26 @@ class OrdersProvider extends ChangeNotifier {
   List<AtelierOrder> byStatus(OrderStatus status) =>
       _orders.where((o) => o.status == status).toList();
 
-  double get chiffreAffairesTotal =>
-      _orders.fold(0, (sum, o) => sum + o.prixTotal);
+  double get chiffreAffairesTotal => _cachedChiffreAffairesTotal;
 
-  double get montantRestantDu => _orders.fold(0, (sum, o) => sum + o.remaining);
+  double get montantRestantDu => _cachedMontantRestantDu;
 
-  List<AtelierOrder> get enRetard {
+  List<AtelierOrder> get enRetard => _cachedEnRetard;
+
+  /// Recalcule les caches pour les commandes. Appelé seulement quand
+  /// _orders change (via le stream ou opération manuelle), pas à chaque rebuild.
+  void _updateOrdersCaches() {
+    // Recalcul du chiffre d'affaires total
+    _cachedChiffreAffairesTotal =
+        _orders.fold(0, (sum, o) => sum + o.prixTotal);
+
+    // Recalcul du montant restant dû
+    _cachedMontantRestantDu = _orders.fold(0, (sum, o) => sum + o.remaining);
+
+    // Recalcul des commandes en retard
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);
-    return _orders.where((o) {
+    _cachedEnRetard = _orders.where((o) {
       if (o.dateEcheance == null) return false;
       if (o.status == OrderStatus.livre) return false;
       return o.dateEcheance!.isBefore(todayOnly);
@@ -82,13 +98,15 @@ class OrdersProvider extends ChangeNotifier {
     _ordersSub = _firestore
         .collection('commandes')
         .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
         .snapshots()
         .listen(
       (snapshot) {
         _orders = snapshot.docs
             .map((d) => AtelierOrder.fromMap(d.id, d.data()))
             .toList();
-        _orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        // Tri serveur via orderBy() — plus de .sort() côté client
+        _updateOrdersCaches(); // Recalcule les caches
         _loading = false;
         _error = null;
         notifyListeners();
@@ -107,13 +125,14 @@ class OrdersProvider extends ChangeNotifier {
     _paymentsSub = _firestore
         .collection('paiements')
         .where('userId', isEqualTo: userId)
+        .orderBy('datePaiement', descending: true)
         .snapshots()
         .listen(
       (snapshot) {
         _payments = snapshot.docs
             .map((d) => AtelierPayment.fromMap(d.id, d.data()))
             .toList();
-        _payments.sort((a, b) => b.datePaiement.compareTo(a.datePaiement));
+        // Tri serveur via orderBy() — plus de .sort() côté client
         notifyListeners();
       },
       onError: (e) {

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/stock_provider.dart';
 import '../../providers/atelier_provider.dart';
@@ -162,6 +164,16 @@ class _StockFormScreenState extends State<StockFormScreen> {
       backgroundColor: AtelierProColors.surface,
       appBar: AppBar(
         title: Text(isEdition ? "Modifier l'article" : 'Ajouter au stock'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/stock');
+            }
+          },
+        ),
         actions: [
           if (isEdition)
             IconButton(

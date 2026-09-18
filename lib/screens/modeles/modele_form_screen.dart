@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/modeles_provider.dart';
 import '../../core/theme.dart';
@@ -210,6 +211,16 @@ class _ModeleFormScreenState extends State<ModeleFormScreen> {
           style: const TextStyle(color: AtelierProColors.onSurface),
         ),
         iconTheme: const IconThemeData(color: AtelierProColors.onSurface),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/modeles');
+            }
+          },
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AtelierProColors.terracotta))
