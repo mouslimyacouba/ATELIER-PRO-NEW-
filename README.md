@@ -1,225 +1,444 @@
 # 🛠️ AtelierPro Mobile
 
-> **Application mobile open source de gestion d'atelier pour les artisans nigériens.**
+> **La gestion simple pour les artisans. 🇳🇪**
 
-AtelierPro est une application mobile développée avec **Flutter** pour aider les artisans à gérer simplement leur activité : clients, commandes, fiches métier, paiements et suivi des travaux.
+**AtelierPro Mobile** est une application Flutter open source conçue pour aider les artisans à gérer leur atelier depuis leur téléphone : **clients, commandes, fiches métier, paiements, fabrication, modèles et stock**.
 
-L'application est pensée pour différents métiers : **couture, menuiserie, mécanique, cordonnerie, maçonnerie, bijouterie, coiffure**, et d'autres métiers pourront être ajoutés progressivement.
+Le projet est développé avec une première cible au **Niger**, avec une approche adaptée aux réalités des petits ateliers : Android prioritaire, FCFA, téléphone, WhatsApp, connexion Internet parfois limitée et besoin de simplicité.
 
 ---
 
-## 🎯 Pourquoi AtelierPro ?
+## 🎯 Le problème
 
-De nombreux petits ateliers utilisent encore principalement :
+Dans de nombreux petits ateliers, la gestion repose encore sur :
 
-* 📒 des cahiers pour enregistrer les clients ;
+* 📒 des cahiers pour les clients ;
 * 📝 des notes papier pour les commandes ;
 * 🧠 la mémoire pour suivre les paiements ;
-* 📱 WhatsApp pour communiquer avec les clients ;
-* 🧾 peu ou pas d'historique numérique.
+* 📱 WhatsApp pour communiquer ;
+* 📦 peu de suivi du stock ;
+* 🏭 peu de visibilité sur l'avancement des travaux.
 
-AtelierPro cherche à proposer une solution **simple, accessible et adaptée au fonctionnement réel des ateliers au Niger**.
+AtelierPro cherche à transformer progressivement cette organisation en un **atelier numérique simple et pratique**.
 
-L'objectif n'est pas de créer un logiciel de gestion complexe.
+### Le parcours principal
 
-L'objectif est de permettre à un artisan de faire rapidement :
-
-> **Client → Commande → Fiche métier → Paiement → Fabrication → Livraison**
+```text
+Client
+   ↓
+Commande
+   ↓
+Fiche métier
+   ↓
+Paiement
+   ↓
+Fabrication
+   ↓
+Suivi
+   ↓
+Livraison
+```
 
 ---
 
-# 🚀 Fonctionnalités actuelles — V1
+# 🚀 État actuel du projet
+
+**Version : 1.0.0+1**
+
+**Statut : prototype fonctionnel / stabilisation V1.1**
+
+Le dépôt actuel contient déjà plusieurs briques qui dépassent la simple gestion de clients et commandes :
+
+* authentification Firebase ;
+* gestion d'atelier ;
+* gestion des clients ;
+* commandes ;
+* fiches métier dynamiques ;
+* 9 métiers artisanaux ;
+* paiements manuels ;
+* calcul du solde ;
+* numérotation des commandes `CMD-XXXX` ;
+* étapes de fabrication ;
+* progression des commandes ;
+* modèles de fabrication ;
+* gestion du stock ;
+* calendrier ;
+* historique des modifications ;
+* notifications de retard ;
+* partage de bilan ;
+* communication WhatsApp ;
+* règles Firestore et Storage ;
+* tests automatisés ;
+* support Android et Web.
+
+Le projet reste cependant en phase de **stabilisation et de validation terrain** avant une utilisation à grande échelle.
+
+---
+
+# ✨ Fonctionnalités disponibles
 
 ## 👤 Gestion des clients
+
+Un atelier peut gérer son fichier client directement depuis l'application.
+
+### Disponible
 
 * Ajouter un client
 * Modifier un client
 * Supprimer un client
+* Nom complet
 * Numéro de téléphone
 * Adresse
 * Notes
-* Photo du client
-* Historique associé aux commandes
+* Photo
+* Historique lié aux commandes
 
 ---
 
-## 📦 Gestion des commandes
+# 📦 Gestion des commandes
 
-Une commande peut contenir :
+Chaque commande peut contenir notamment :
 
 * Client
 * Description
-* Fiche métier associée
+* Métier
+* Fiche métier
 * Prix total
 * Acompte
 * Solde restant
 * Date de commande
 * Date d'échéance
-* Statut de la commande
+* Statut
+* Numéro de commande
+* Spécifications propres au métier
+* Étapes de fabrication
 
-### Statuts actuels
+### Numérotation
 
-* Nouveau
-* Confirmé
-* En fabrication
-* Prêt
-* Livré
-* Annulé
+Les commandes utilisent une référence lisible :
 
-Le solde est calculé côté Dart à partir du montant total et des paiements enregistrés.
+```text
+CMD-0001
+CMD-0002
+CMD-0003
+...
+CMD-0100
+```
+
+Cette numérotation est générée à partir d'un compteur propre à l'utilisateur.
+
+### Statuts
+
+Le système permet notamment de suivre le cycle d'une commande :
+
+```text
+En attente
+    ↓
+En cours
+    ↓
+Prête
+    ↓
+Livrée
+```
+
+avec également la possibilité de gérer les commandes annulées selon le workflow de l'application.
 
 ---
 
-## 📋 Fiches métier dynamiques
+# 📋 Fiches métier dynamiques
 
-AtelierPro n'est pas limité à un seul secteur.
+L'une des fonctionnalités centrales d'AtelierPro est son architecture **multi-métiers**.
 
-Le métier de l'atelier détermine automatiquement les champs proposés dans les fiches.
+Le formulaire de commande peut afficher des champs différents selon le métier de l'atelier.
 
-### 👕 Couture
+## Métiers actuellement supportés
 
-Exemples :
+| Métier                        | Exemple de données                      |
+| ----------------------------- | --------------------------------------- |
+| 👕 Couture / Confection       | mesures, vêtement, tissu, couleur       |
+| 🪑 Menuiserie                 | ouvrage, dimensions, bois, finition     |
+| 🚗 Mécanique                  | véhicule, kilométrage, panne            |
+| 👞 Cordonnerie / Maroquinerie | article, matière, dimensions            |
+| 🧱 Maçonnerie                 | ouvrage, travaux, dimensions            |
+| 💍 Bijouterie                 | type de bijou, poids, pierre            |
+| 💇 Coiffure                   | prestation, produits                    |
+| 🔧 Métallerie / Soudure       | ouvrage métallique, dimensions, matière |
+| 🧰 Autre                      | champs génériques                       |
 
-* Tour de poitrine
-* Tour de taille
-* Tour de hanche
-* Longueur
-* Épaule
-* Manche
-* Notes
+### Architecture
 
-### 🚗 Mécanique
+Le métier est représenté par :
 
-Exemples :
+```dart
+enum TypeAtelier
+```
 
-* Marque
-* Modèle
-* Immatriculation
-* Kilométrage
-* Problème
-* Diagnostic
+Les configurations sont centralisées dans le registre métier.
 
-### 🪑 Menuiserie
+```text
+TypeAtelier
+     ↓
+MetierRegistry
+     ↓
+Configuration du métier
+     ↓
+Champs dynamiques
+     ↓
+Commande
+```
 
-Exemples :
+L'objectif est de pouvoir ajouter progressivement de nouveaux métiers sans modifier les écrans principaux.
 
-* Type de meuble
-* Dimensions
-* Matière
-* Couleur
+---
+
+# 🏭 Fabrication
+
+AtelierPro commence également à intégrer la gestion du processus de fabrication.
+
+Une commande peut conserver un instantané de ses étapes :
+
+```text
+Commande
+   │
+   ├── Découpe
+   ├── Assemblage
+   ├── Finition
+   └── Livraison
+```
+
+La progression peut être calculée à partir des étapes terminées.
+
+Exemple :
+
+```text
+1 étape terminée / 3
+
+Progression : 33 %
+```
+
+Cela prépare AtelierPro à évoluer vers une véritable gestion de production adaptée aux ateliers.
+
+---
+
+# 🧩 Modèles de fabrication
+
+Les ateliers peuvent définir des **modèles de fabrication** réutilisables.
+
+Un modèle peut notamment contenir :
+
+* Nom
+* Type de produit
+* Description
+* Champs de mesures
+* Matériaux par défaut
+* Étapes de fabrication
+* Prix indicatif
+* Photo
+* État actif/inactif
+
+Les modèles sont synchronisés avec Firestore en temps réel.
+
+---
+
+# 📦 Gestion du stock
+
+Une première gestion du stock est déjà présente.
+
+### Disponible
+
+* Ajouter un article
+* Modifier un article
+* Supprimer un article
 * Quantité
-* Notes
+* Détection de stock faible
+* Suivi par atelier
+* Mise à jour temps réel
+* Consommation de matériaux
 
-Le même principe est utilisé pour les autres métiers.
+Le système peut également déduire des quantités lorsque des matériaux sont associés à une fabrication.
 
 ---
 
-## 💰 Gestion des paiements
+# 💰 Paiements
 
-Les paiements peuvent actuellement être enregistrés manuellement depuis une commande.
+Les paiements peuvent être enregistrés manuellement.
 
-Informations enregistrées :
+Chaque paiement peut contenir :
 
 * Montant
 * Mode de paiement
 * Date
 * Commande associée
+* Identifiant utilisateur
 
-### ⚠️ Mobile Money
-
-L'intégration directe avec les services Mobile Money n'est **pas encore disponible**.
-
-L'intégration future pourra notamment concerner :
-
-* Airtel Money
-* Moov Money
-* Wave
-* Zamani Cash
-* Nita
-* Amanata
-* autres services selon leur disponibilité et leurs API
-
----
-
-## 📱 WhatsApp
-
-AtelierPro peut faciliter la communication avec les clients via WhatsApp.
-
-L'objectif est notamment de permettre à l'artisan de transmettre rapidement :
-
-* l'état d'une commande ;
-* le montant restant ;
-* la disponibilité d'une commande ;
-* des informations de livraison.
-
----
-
-# 🧩 Architecture technique
-
-AtelierPro Mobile utilise une architecture Flutter connectée à Firebase.
+Le système permet de calculer :
 
 ```text
-Flutter
-   │
-   ├── Screens
-   │
-   ├── Widgets
-   │
-   ├── Providers
-   │
-   ├── Models
-   │
-   └── Core
-          │
-          ▼
-       Firebase
-          │
-     ┌────┼────────────┐
-     ▼    ▼            ▼
-   Auth Firestore    Storage
+Prix total
+    -
+Paiements
+    =
+Solde restant
 ```
 
-## Stack
+### Exemple
 
-| Technologie             | Utilisation          |
-| ----------------------- | -------------------- |
-| Flutter                 | Application mobile   |
-| Dart                    | Langage              |
-| Firebase Authentication | Authentification     |
-| Cloud Firestore         | Base de données      |
-| Firebase Storage        | Photos et fichiers   |
-| Provider                | Gestion d'état       |
-| GoRouter                | Navigation           |
-| WhatsApp                | Communication client |
+```text
+Commande : 150 000 FCFA
+
+Acompte : 50 000 FCFA
+
+Reste : 100 000 FCFA
+```
+
+---
+
+## 📱 Mobile Money
+
+L'intégration directe avec les services Mobile Money **n'est pas encore activée**.
+
+Elle pourra être étudiée ultérieurement selon les conditions techniques, commerciales et les API réellement disponibles.
+
+Le projet pourra notamment explorer les services disponibles au Niger et dans la région.
+
+---
+
+# 📅 Calendrier et échéances
+
+AtelierPro possède un écran calendrier permettant de visualiser les échéances des commandes.
+
+Le système peut également détecter les commandes en retard.
+
+Une commande non livrée dont l'échéance est dépassée peut être identifiée comme :
+
+```text
+⚠️ En retard
+```
+
+L'objectif est de réduire les oublis et les retards de livraison.
+
+---
+
+# 🔔 Notifications
+
+Le projet contient également une base de notifications locales permettant notamment de préparer les rappels liés aux échéances.
+
+L'objectif est d'aider l'artisan à ne pas oublier :
+
+* les commandes à livrer ;
+* les échéances proches ;
+* les commandes en retard.
+
+---
+
+# 📊 Tableau de bord
+
+Le dashboard fournit une vue synthétique de l'activité de l'atelier.
+
+Il peut notamment afficher :
+
+* chiffre d'affaires ;
+* montant restant à encaisser ;
+* nombre de clients ;
+* nombre de commandes ;
+* commandes ouvertes ;
+* commandes en retard ;
+* commandes à livrer prochainement ;
+* paiements récents ;
+* progression de l'activité.
+
+Un **bilan de l'atelier peut également être partagé**.
+
+---
+
+# 📱 WhatsApp
+
+AtelierPro utilise WhatsApp comme moyen de communication complémentaire avec les clients.
+
+L'objectif est de faciliter l'envoi d'informations telles que :
+
+* état de la commande ;
+* montant restant ;
+* commande prête ;
+* informations de livraison.
+
+AtelierPro ne cherche pas à remplacer WhatsApp mais à **préparer les informations nécessaires avant leur envoi**.
+
+---
+
+# 🏗️ Architecture technique
+
+AtelierPro est construit avec **Flutter + Firebase**.
+
+```text
+                    AtelierPro
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+             UI                 Providers
+              │                     │
+              └──────────┬──────────┘
+                         │
+                      Models
+                         │
+                  Core / Services
+                         │
+                         ▼
+                      Firebase
+              ┌──────────┼──────────┐
+              ▼          ▼          ▼
+          Auth       Firestore    Storage
+```
+
+L'architecture actuelle utilise principalement :
+
+* Screens
+* Widgets
+* Providers
+* Models
+* Core
+* Services
+* Firebase
+
+Une évolution progressive vers une architecture avec **Repositories** est prévue pour les prochaines versions.
+
+---
+
+# 🧰 Stack technique
+
+| Technologie                 | Utilisation               |
+| --------------------------- | ------------------------- |
+| Flutter                     | Application               |
+| Dart                        | Langage                   |
+| Firebase Authentication     | Authentification          |
+| Cloud Firestore             | Données                   |
+| Firebase Storage            | Photos et fichiers        |
+| Provider                    | Gestion d'état            |
+| GoRouter                    | Navigation                |
+| Flutter Local Notifications | Notifications             |
+| Connectivity Plus           | Détection de connectivité |
+| Shared Preferences          | Stockage local            |
+| Flutter Dotenv              | Configuration locale      |
+| Image Picker                | Photos                    |
+| Share Plus                  | Partage                   |
+| Google Sign-In              | Authentification Google   |
 
 ---
 
 # 🗂️ Structure du projet
 
+La structure actuelle comprend notamment :
+
 ```text
 lib/
 ├── core/
-│   ├── theme/
-│   ├── router/
-│   ├── storage/
-│   └── services/
+│   ├── config/
+│   ├── services/
+│   └── theme/
 │
 ├── models/
-│   ├── atelier.dart
-│   ├── client.dart
-│   ├── commande.dart
-│   ├── paiement.dart
-│   ├── fiche_mesure.dart
-│   ├── type_atelier.dart
-│   ├── champ_fiche.dart
-│   └── fiche_template.dart
 │
 ├── providers/
-│   ├── auth_provider.dart
-│   ├── atelier_provider.dart
-│   ├── clients_provider.dart
-│   ├── commandes_provider.dart
-│   └── fiches_provider.dart
 │
 ├── screens/
 │   ├── auth/
@@ -228,7 +447,12 @@ lib/
 │   ├── clients/
 │   ├── orders/
 │   ├── mesures/
-│   └── settings/
+│   ├── modeles/
+│   ├── stock/
+│   ├── calendrier/
+│   ├── historique/
+│   ├── settings/
+│   └── shell/
 │
 ├── widgets/
 │
@@ -238,193 +462,149 @@ firebase/
 ├── firestore.rules
 ├── storage.rules
 └── firestore.indexes.json
+
+test/
+├── firebase_options_test.dart
+├── metier_registry_test.dart
+├── phase3_4_5_6_validation_test.dart
+├── security_rules_test.dart
+└── widget_test.dart
 ```
 
 ---
 
 # 🔥 Architecture Firestore
 
-Les données sont organisées dans des collections de premier niveau.
+Les principales collections utilisées sont :
 
 ```text
 ateliers/{userId}
-clients/{autoId}
-commandes/{autoId}
-fiches/{autoId}
-paiements/{autoId}
+
+clients/{documentId}
+
+commandes/{documentId}
+
+fiches/{documentId}
+
+paiements/{documentId}
+
+modeles/{documentId}
+
+stock/{documentId}
+
+historique_modifications/{documentId}
+
+compteurs/{userId}
 ```
 
-Chaque document utilisateur contient un champ :
+Les documents métier utilisent un champ :
 
 ```text
 userId
 ```
 
-permettant de filtrer les données appartenant à l'utilisateur connecté.
+pour rattacher les données à l'atelier de l'utilisateur.
 
 ---
 
-## Atelier
+## 🔐 Sécurité Firebase
+
+La sécurité repose notamment sur :
+
+* Firebase Authentication ;
+* vérification de l'e-mail ;
+* règles Firestore ;
+* règles Firebase Storage ;
+* contrôle de propriété par `userId` ;
+* protection contre le changement de propriétaire ;
+* séparation des données entre utilisateurs.
+
+Les paiements et l'historique des modifications disposent également de règles spécifiques afin de préserver leur intégrité.
+
+### Storage
+
+Les fichiers sont organisés par utilisateur :
 
 ```text
-ateliers/{userId}
-
-{
-  nomAtelier,
-  telephone,
-  ville,
-  specialite,
-  logoUrl,
-  createdAt,
-  updatedAt
-}
+logos/{userId}/
+photos/{userId}/
+commandes/{userId}/
+modeles_etapes/{userId}/
 ```
 
-L'identifiant du document correspond directement au `uid` Firebase de l'utilisateur.
+Les uploads sont limités en taille par les règles Storage.
+
+> ⚠️ Les règles doivent toujours être testées dans l'environnement Firebase avant une utilisation en production.
 
 ---
 
-## Client
+# 🧪 Tests
 
-```text
-clients/{autoId}
+Le dépôt contient plusieurs tests automatisés.
 
-{
-  userId,
-  nomComplet,
-  telephone,
-  adresse,
-  notes,
-  photoUrl,
-  createdAt,
-  updatedAt
-}
+Ils couvrent notamment :
+
+### Métier
+
+* présence des configurations ;
+* unicité des configurations ;
+* champs spécifiques à chaque métier ;
+* libellés lisibles ;
+* validation des champs.
+
+### Commandes
+
+* sérialisation ;
+* spécifications métier ;
+* numérotation `CMD-XXXX` ;
+* étapes de fabrication ;
+* progression.
+
+### Paiements
+
+* calcul du solde ;
+* commande entièrement payée.
+
+### Calendrier
+
+* détection des échéances dépassées.
+
+### Sécurité
+
+* synchronisation des règles ;
+* propriété des documents ;
+* protection des collections ;
+* protection Firebase Storage.
+
+Lancer les tests :
+
+```bash
+flutter test
 ```
 
----
+Analyser le projet :
 
-## Commande
-
-```text
-commandes/{autoId}
-
-{
-  userId,
-  clientId,
-  clientNom,
-  ficheId,
-  description,
-  statut,
-  dateCommande,
-  dateEcheance,
-  prixTotal,
-  acompte,
-  createdAt,
-  updatedAt
-}
+```bash
+flutter analyze
 ```
 
-Le champ `clientNom` est volontairement dénormalisé afin d'éviter une requête supplémentaire lors de l'affichage des commandes.
+Formater le code :
 
----
-
-## Fiche métier
-
-```text
-fiches/{autoId}
-
-{
-  userId,
-  clientId,
-  titre,
-  mesures,
-  notes,
-  createdAt,
-  updatedAt
-}
-```
-
-Le champ `mesures` est une `Map` permettant de stocker des champs différents selon le métier.
-
----
-
-## Paiement
-
-```text
-paiements/{autoId}
-
-{
-  userId,
-  commandeId,
-  montant,
-  mode,
-  datePaiement,
-  createdAt
-}
+```bash
+dart format .
 ```
 
 ---
 
-# 🧠 Système de fiches multi-métiers
+# 🤖 Intégration continue
 
-Le système de fiches est conçu pour être extensible.
-
-Les principaux fichiers sont :
+Le dépôt contient également une configuration GitHub Actions :
 
 ```text
-lib/models/type_atelier.dart
-lib/models/champ_fiche.dart
-lib/models/fiche_template.dart
-lib/core/fiche_templates.dart
+.github/workflows/dart.yml
 ```
 
-Pour ajouter un nouveau métier :
-
-1. Ajouter le type dans `TypeAtelier`
-2. Ajouter sa valeur `dbValue`
-3. Ajouter son template dans `ficheTemplates`
-
-Aucun écran principal ne doit être modifié.
-
-### Exemple
-
-```dart
-TypeAtelier.maconnerie
-```
-
-peut être associé à :
-
-```text
-fiche chantier
-├── Type de chantier
-├── Dimensions
-├── Matériaux
-├── Quantité
-├── Budget
-└── Notes
-```
-
----
-
-# 🔐 Sécurité
-
-La sécurité repose sur :
-
-* Firebase Authentication
-* règles Firestore
-* règles Firebase Storage
-* filtrage par `userId`
-
-Chaque utilisateur doit uniquement pouvoir accéder à ses propres données.
-
-Les règles de sécurité sont disponibles ici :
-
-```text
-firebase/firestore.rules
-firebase/storage.rules
-```
-
-⚠️ Avant de publier une version destinée à de vrais utilisateurs, les règles Firebase doivent être auditées et testées.
+Elle permet d'automatiser notamment l'analyse et les tests du projet.
 
 ---
 
@@ -434,33 +614,31 @@ firebase/storage.rules
 
 Installer :
 
-* Flutter SDK
-* Android Studio
-* plugin Flutter
-* plugin Dart
-* Git
-* un émulateur Android ou un téléphone Android
+* Flutter SDK ;
+* Dart ;
+* Android Studio ;
+* Git ;
+* VS Code ou un autre IDE ;
+* un appareil Android ou un émulateur.
 
-Vérifier l'installation :
+Vérifier Flutter :
 
 ```bash
 flutter doctor
 ```
 
-Tous les éléments importants doivent être correctement configurés.
-
 ---
 
-# 📥 Cloner le projet
+# 📥 Cloner le dépôt
 
 ```bash
-git clone https://github.com/mouslimyacouba/atelierpro_mobile.git
+git clone https://github.com/mouslimyacouba/ATELIER-PRO-NEW-.git
 ```
 
 Puis :
 
 ```bash
-cd atelierpro_mobile
+cd ATELIER-PRO-NEW-
 ```
 
 ---
@@ -473,158 +651,69 @@ flutter pub get
 
 ---
 
-# 📱 Générer les plateformes
-
-Si les dossiers Android/iOS ne sont pas présents :
-
-```bash
-flutter create . --platforms=android,ios --org com.zinderdigital
-```
-
----
-
 # 🔥 Configuration Firebase
 
-AtelierPro utilise le projet Firebase :
+AtelierPro utilise Firebase.
 
-```text
-atelier-pro-1a9e8
-```
-
-Avant le premier lancement, Firebase doit être correctement configuré.
-
-## Option recommandée
-
-Installer FlutterFire CLI puis lancer :
+La configuration locale doit être fournie par le développeur ou configurée avec FlutterFire.
 
 ```bash
 flutterfire configure
 ```
 
-Cette commande permet de configurer les applications Firebase et de générer les fichiers nécessaires.
-
----
-
-## Android
-
-Le fichier :
-
-```text
-android/app/google-services.json
-```
-
-doit correspondre à l'application Android enregistrée dans Firebase.
-
----
-
-## iOS
-
-Pour une future version iOS :
-
-```text
-ios/Runner/GoogleService-Info.plist
-```
-
-devra être correctement configuré.
+Les fichiers de configuration Firebase propres à l'environnement ne doivent pas être commités dans le dépôt.
 
 ---
 
 # 🔑 Variables d'environnement
 
-Créer le fichier `.env` à partir du modèle :
+Le projet utilise un fichier :
 
-```bash
-cp .env.example .env
+```text
+.env
 ```
 
-Puis renseigner les valeurs nécessaires.
+Un modèle est fourni :
 
-⚠️ **Ne jamais publier les vraies clés ou secrets dans GitHub.**
-
-Le fichier `.env` doit rester dans `.gitignore`.
-
-### Configuration locale
-
-Les variables Firebase doivent être renseignées dans un fichier `.env` à la racine du projet avec les noms présents dans `.env.example`.
-
-```bash
-flutter pub get
-flutter analyze
-flutter test
+```text
+.env.example
 ```
 
-Si une variable obligatoire manque, l'application affiche l'écran
-**Configuration Firebase requise** et ne se connecte pas avec des valeurs
-factices. Les tests unitaires peuvent tout de même être exécutés sans
-identifiants Firebase. Lors de la préparation de cette configuration,
-`flutter test` passe avec 15 tests et `flutter analyze` s'exécute mais retourne
-les 65 diagnostics de lint déjà présents dans le code ; ces diagnostics sont
-indépendants de Firebase. Les valeurs Firebase réelles ne doivent jamais être
-ajoutées au dépôt.
+Créer la configuration locale à partir de ce modèle puis renseigner les valeurs nécessaires.
+
+### Important
+
+Ne jamais publier :
+
+```text
+.env
+google-services.json
+GoogleService-Info.plist
+```
+
+ni aucune autre donnée secrète.
+
+Les fichiers sensibles sont exclus du dépôt via `.gitignore`.
 
 ---
 
 # 🔐 Google Sign-In
 
-Pour utiliser :
-
-> **Continuer avec Google**
-
-il faut activer Google comme fournisseur dans :
+Pour activer :
 
 ```text
-Firebase Console
-→ Authentication
-→ Sign-in method
-→ Google
+Continuer avec Google
 ```
 
-Pour Android, les empreintes SHA-1 et SHA-256 doivent également être configurées.
+Google doit être activé dans Firebase Authentication.
 
-Depuis Android :
-
-```bash
-cd android
-./gradlew signingReport
-```
-
-Ajouter les empreintes correspondantes dans Firebase.
-
-Après modification, télécharger à nouveau :
-
-```text
-google-services.json
-```
-
----
-
-# 🗄️ Firestore
-
-Créer la base Firestore depuis Firebase Console.
-
-Les règles sont disponibles dans :
-
-```text
-firebase/firestore.rules
-```
-
-Les index sont disponibles dans :
-
-```text
-firebase/firestore.indexes.json
-```
-
-Ils peuvent être déployés avec Firebase CLI :
-
-```bash
-firebase deploy --only firestore:indexes
-```
+Pour Android, les empreintes SHA-1 et SHA-256 de l'application doivent également être configurées dans Firebase.
 
 ---
 
 # ▶️ Lancer l'application
 
-Avec un téléphone Android connecté :
+Vérifier les appareils :
 
 ```bash
 flutter devices
@@ -638,93 +727,149 @@ flutter run
 
 ---
 
+# 🌐 Support Web
+
+Le dépôt contient également les fichiers nécessaires au support Flutter Web.
+
+```text
+web/
+```
+
+Le Web sert notamment aux tests et à la vérification de certaines fonctionnalités.
+
+La cible principale du projet reste toutefois **Android**, correspondant au contexte initial d'utilisation.
+
+---
+
 # 📦 Générer l'APK
 
-Pour créer une version release :
+Pour construire une version release :
 
 ```bash
 flutter build apk --release
 ```
 
-L'APK sera disponible dans :
+Le fichier généré se trouve généralement dans :
 
 ```text
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
+Pour une distribution Google Play, une configuration de signature et un build adapté au Play Store seront nécessaires.
+
 ---
 
 # 🗺️ Roadmap
 
-## V1 — Base fonctionnelle
+## ✅ V1 — Base fonctionnelle
 
 * [x] Authentification
+* [x] Vérification e-mail
+* [x] Google Sign-In
 * [x] Gestion de l'atelier
 * [x] Gestion des clients
 * [x] Gestion des commandes
 * [x] Fiches métier dynamiques
+* [x] 9 métiers
 * [x] Paiements manuels
 * [x] Calcul du solde
-* [x] Firebase
-* [x] Architecture multi-métiers
+* [x] Numérotation `CMD-XXXX`
+* [x] Étapes de fabrication
+* [x] Progression de fabrication
+* [x] Modèles de fabrication
+* [x] Gestion du stock
+* [x] Calendrier
+* [x] Historique des modifications
+* [x] Détection des retards
+* [x] Notifications
+* [x] Partage de bilan
 * [x] Support WhatsApp
+* [x] Firebase
+* [x] Sécurité Firestore
+* [x] Sécurité Storage
+* [x] Tests automatisés
 * [x] Licence MIT
 
 ---
 
-# 🚧 V1.1 — Stabilisation
+# 🚧 V1.1 — Stabilisation et terrain
 
-Objectif : rendre l'application suffisamment fiable pour les premiers artisans.
+Objectif : préparer AtelierPro aux **premiers utilisateurs réels**.
 
-* [ ] Audit des règles Firestore
-* [ ] Amélioration des messages d'erreur
-* [ ] États loading / empty / error
-* [ ] Validation complète des formulaires
-* [ ] Recherche clients
-* [ ] Recherche commandes
-* [ ] Références de commande
-* [ ] Reçus de paiement
-* [ ] Amélioration WhatsApp
-* [ ] Notifications et rappels
-* [ ] Amélioration UX Android
-* [ ] Tests sur appareils Android réels
+### Fiabilité
+
+* [ ] Tests Android sur plusieurs appareils
 * [ ] Tests hors connexion / reconnexion
-* [ ] Tests de sécurité Firebase
+* [ ] Gestion complète des erreurs Firebase
+* [ ] Amélioration des états loading / empty / error
+* [ ] Validation complète des formulaires
+* [ ] Tests de régression
+
+### Commandes
+
+* [ ] Amélioration du workflow de statut
+* [ ] Amélioration des références de commande
+* [ ] Reçus de commande
+* [ ] Reçus de paiement
+* [ ] Amélioration du partage WhatsApp
+
+### Stock
+
+* [ ] Historique des mouvements
+* [ ] Entrées / sorties
+* [ ] Seuil configurable
+* [ ] Lien stock ↔ commande plus complet
+
+### Sécurité
+
+* [ ] Audit complet Firestore
+* [ ] Audit Storage
+* [ ] Tests de sécurité avec Firebase Emulator Suite
+* [ ] Vérification des permissions par scénario
+
+### Terrain
+
+* [ ] Tests avec des artisans
+* [ ] Collecte des retours
+* [ ] Identification des fonctionnalités réellement utilisées
+* [ ] Amélioration UX à partir des retours terrain
 
 ---
 
-# 🚀 V2 — Gestion de production
+# 🚀 V2 — Assistant numérique d'atelier
 
-La V2 doit faire évoluer AtelierPro d'un simple outil de gestion vers un véritable **assistant numérique d'atelier**.
+La V2 doit faire évoluer AtelierPro d'un outil de gestion vers un **assistant numérique complet pour l'atelier**.
 
-## Production
+## 🏭 Production
 
-* [ ] Étapes de fabrication
-* [ ] Progression des commandes
-* [ ] Workflows par métier
+* [ ] Workflow configurable par métier
+* [ ] Étapes personnalisables
+* [ ] Suivi de production
+* [ ] Temps de fabrication
+* [ ] Retards
 * [ ] Historique des étapes
-* [ ] Date de livraison
-* [ ] Notifications de retard
+* [ ] Notifications avancées
 
-## Gestion financière
+## 💰 Gestion financière
 
 * [ ] Coût des matériaux
-* [ ] Coût estimé de production
-* [ ] Bénéfice estimé
-* [ ] Chiffre d'affaires
+* [ ] Coût de production
+* [ ] Marge estimée
+* [ ] Chiffre d'affaires par période
 * [ ] Paiements en attente
-* [ ] Historique financier
+* [ ] Dépenses
+* [ ] Bilan financier
 
-## Stock
+## 📦 Stock avancé
 
-* [ ] Produits
-* [ ] Quantités
+* [ ] Mouvements de stock
 * [ ] Entrées
 * [ ] Sorties
-* [ ] Stock faible
+* [ ] Stock minimum
 * [ ] Consommation par commande
+* [ ] Coût des matériaux
 
-## Fournisseurs
+## 🤝 Fournisseurs
 
 * [ ] Liste des fournisseurs
 * [ ] Contacts
@@ -732,38 +877,44 @@ La V2 doit faire évoluer AtelierPro d'un simple outil de gestion vers un vérit
 * [ ] Prix
 * [ ] Historique des achats
 
-## Paiements
+## 💳 Paiements
 
-* [ ] Amélioration des modes de paiement
 * [ ] Références de transaction
+* [ ] Reçus avancés
 * [ ] Intégration Mobile Money
-* [ ] Intégration iPayMoney lorsque les conditions techniques seront disponibles
+* [ ] Intégration de services de paiement selon les API disponibles
 
 ---
 
-# 🏗️ Architecture cible V2
+# 🏗️ Architecture cible
 
-L'architecture évoluera progressivement vers :
+L'architecture pourra évoluer progressivement vers une séparation plus stricte des responsabilités :
 
 ```text
 UI
  │
  ▼
-Providers
+Providers / State Management
  │
  ▼
 Repositories
  │
  ▼
+Services
+ │
+ ▼
 Firebase
 ```
 
-Les repositories permettront de séparer progressivement :
+Objectif :
 
-* l'interface utilisateur ;
-* la gestion d'état ;
-* la logique métier ;
-* l'accès aux données.
+```text
+Interface
+   ≠
+Logique métier
+   ≠
+Accès aux données
+```
 
 Structure cible :
 
@@ -773,27 +924,56 @@ lib/
 ├── models/
 ├── providers/
 ├── repositories/
+├── services/
 ├── screens/
-├── widgets/
-└── services/
+└── widgets/
 ```
+
+Cette évolution sera réalisée progressivement afin de ne pas introduire une complexité inutile dans le prototype actuel.
 
 ---
 
-# 🌍 Pour les artisans nigériens
+# 🌍 Conçu pour le contexte nigérien
 
-AtelierPro est conçu avec plusieurs contraintes du contexte local :
+AtelierPro prend en compte plusieurs contraintes du terrain :
 
-* 📱 priorité à Android ;
-* 📶 prise en compte des connexions Internet limitées ;
-* 💰 utilisation du FCFA ;
-* 📞 importance du téléphone et de WhatsApp ;
-* 💳 prise en compte progressive du Mobile Money ;
-* 🧾 simplicité des reçus et commandes ;
-* 🏪 adaptation à plusieurs types d'ateliers ;
-* 🇳🇪 développement avec une première cible au Niger.
+* 📱 Android prioritaire ;
+* 📶 connectivité parfois limitée ;
+* 💰 FCFA ;
+* 📞 téléphone comme moyen de contact principal ;
+* 📱 WhatsApp ;
+* 💳 paiements électroniques en évolution ;
+* 🏪 petits ateliers ;
+* 👷 différents métiers artisanaux ;
+* 🇳🇪 première cible au Niger.
 
-L'objectif est de construire une application utile **sur le terrain**, pas seulement une démonstration technique.
+L'objectif est de construire un outil **réellement utilisable dans un atelier**, et pas uniquement une démonstration technique.
+
+---
+
+# 🔌 Philosophie du projet
+
+AtelierPro suit quelques principes :
+
+### Simplicité
+
+L'artisan doit pouvoir effectuer rapidement les opérations principales.
+
+### Adaptabilité
+
+Le système de fiches métier permet d'adapter les formulaires à différents ateliers.
+
+### Progressivité
+
+Les fonctionnalités complexes sont ajoutées progressivement au lieu de surcharger la première version.
+
+### Sécurité
+
+Les données d'un atelier doivent rester séparées de celles des autres utilisateurs.
+
+### Terrain d'abord
+
+Les décisions futures doivent être guidées par les retours des artisans et les usages réels.
 
 ---
 
@@ -803,47 +983,61 @@ AtelierPro est un projet open source.
 
 Les contributions sont les bienvenues.
 
-Pour contribuer :
+## Installation
 
 ```bash
-git clone https://github.com/mouslimyacouba/atelierpro_mobile.git
-cd atelierpro_mobile
+git clone https://github.com/mouslimyacouba/ATELIER-PRO-NEW-.git
+cd ATELIER-PRO-NEW-
 flutter pub get
 ```
 
-Créer ensuite une branche :
+Créer une branche :
 
 ```bash
 git checkout -b feature/ma-fonctionnalite
 ```
 
-Effectuer les modifications, tester l'application puis créer une Pull Request.
+Développer, tester et formater :
+
+```bash
+flutter analyze
+flutter test
+dart format .
+```
+
+Puis créer une Pull Request.
 
 ---
 
-# 💡 Idées de contribution
+# 💡 Domaines de contribution
 
-Les contributeurs peuvent notamment aider sur :
+Les contributeurs peuvent aider sur :
 
 * nouveaux métiers ;
 * templates de fiches ;
-* amélioration UX ;
-* tests Flutter ;
+* UX/UI ;
 * accessibilité ;
-* optimisation des performances ;
+* tests Flutter ;
 * sécurité Firebase ;
-* traduction ;
+* architecture ;
+* performances ;
+* mode hors connexion ;
 * documentation ;
-* intégration Mobile Money ;
+* traduction ;
+* Mobile Money ;
+* stock ;
+* production ;
 * fonctionnalités adaptées aux artisans africains.
 
 ---
 
 # 📄 Licence
 
-Ce projet est distribué sous licence **MIT**.
+AtelierPro Mobile est distribué sous licence :
 
-Voir le fichier :
+**MIT**
+
+Voir :
 
 ```text
 LICENSE
@@ -851,27 +1045,27 @@ LICENSE
 
 ---
 
-# 📌 Statut du projet
-
-**AtelierPro Mobile est actuellement en développement.**
-
-La priorité actuelle est de stabiliser la V1, la tester avec de vrais artisans et recueillir leurs retours avant de développer les fonctionnalités majeures de la V2.
+# 📌 Statut actuel
 
 ```text
-V1
-  ↓
-Stabilisation
-  ↓
+Prototype fonctionnel
+        ↓
+Stabilisation V1.1
+        ↓
+Tests terrain
+        ↓
 Premiers artisans
-  ↓
-Retours terrain
-  ↓
-V1.1
-  ↓
-Production
-  ↓
-V2
+        ↓
+Retours utilisateurs
+        ↓
+Amélioration
+        ↓
+V2 — Assistant numérique d'atelier
 ```
+
+Le projet n'est pas présenté comme un produit terminé.
+
+La priorité actuelle est de **fiabiliser l'existant, tester AtelierPro avec des artisans et améliorer le produit à partir de leurs besoins réels**.
 
 ---
 
@@ -881,18 +1075,22 @@ V2
 
 Développeur autodidacte et porteur du projet AtelierPro.
 
-Projet développé avec l'objectif de contribuer à la **digitalisation des petits ateliers et artisans au Niger**.
+AtelierPro est développé avec l'objectif de contribuer progressivement à la **digitalisation des petits ateliers et artisans au Niger**.
 
 ---
 
-## ⭐ Soutenir le projet
+# ⭐ Soutenir AtelierPro
 
-Si AtelierPro est utile ou intéressant :
+Vous pouvez soutenir le projet en :
 
-* ⭐ Star le repository
-* 🐛 Signaler un problème
-* 💡 Proposer une fonctionnalité
-* 🤝 Contribuer au code
-* 📣 Partager le projet avec des artisans
+* ⭐ donnant une Star au dépôt ;
+* 🐛 signalant un bug ;
+* 💡 proposant une fonctionnalité ;
+* 🤝 contribuant au code ;
+* 🧪 testant l'application ;
+* 👷 partageant le projet avec un artisan ;
+* 📣 faisant connaître le projet.
 
-**AtelierPro — Du cahier à l'atelier numérique. 🇳🇪**
+---
+
+> **AtelierPro — Du cahier à l'atelier numérique. 🇳🇪**
