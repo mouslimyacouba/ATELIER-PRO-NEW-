@@ -16,6 +16,8 @@ import '../screens/orders/new_order_screen.dart';
 import '../screens/orders/order_detail_screen.dart';
 import '../screens/mesures/mesures_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../screens/settings/privacy_policy_screen.dart';
+import '../screens/settings/terms_screen.dart';
 import '../screens/stock/stock_screen.dart';
 import '../screens/stock/stock_form_screen.dart';
 import '../screens/modeles/modeles_screen.dart';
@@ -96,6 +98,12 @@ GoRouter buildRouter(BuildContext context) {
           GoRoute(
               path: '/parametres',
               builder: (context, state) => const SettingsScreen()),
+          GoRoute(
+              path: '/parametres/confidentialite',
+              builder: (context, state) => const PrivacyPolicyScreen()),
+          GoRoute(
+              path: '/parametres/cgu',
+              builder: (context, state) => const TermsScreen()),
           GoRoute(
               path: '/stock',
               builder: (context, state) => const StockScreen()),

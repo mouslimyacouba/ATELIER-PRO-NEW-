@@ -204,7 +204,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                                 final client = filtered[i];
                                 return Card(
                                   child: ListTile(
-                                    onTap: () => context.go('/clients/${client.id}'),
+                                    onTap: () => context.push('/clients/${client.id}'),
                                     leading: CircleAvatar(
                                       backgroundColor: AtelierProColors.terracotta.withValues(alpha: 0.12),
                                       backgroundImage: client.photoUrl != null ? NetworkImage(client.photoUrl!) : null,

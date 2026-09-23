@@ -3,150 +3,64 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ────────────────────────────────────────────────────────────────
-    // Default Deny: tout accès est interdit sauf règle explicite.
-    // ────────────────────────────────────────────────────────────────
+    // Default Deny: Interdire tout accès par défaut.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Fonctions utilitaires
-    // ────────────────────────────────────────────────────────────────
-
-    // Utilisateur connecté avec e-mail vérifié
     function isSignedIn() {
-      return request.auth != null && request.auth.token.email_verified == true;
+      return request.auth != null;
     }
 
-    // Le document appartient à l'utilisateur connecté
     function isOwner(data) {
       return isSignedIn() && data.userId == request.auth.uid;
     }
 
-    // Un champ obligatoire est présent et non vide dans la requête entrante
-    function hasField(field) {
-      return field in request.resource.data && request.resource.data[field] != null;
-    }
-
-    // Le userId n'a pas changé entre ancienne et nouvelle version (anti-hijacking)
-    function userIdUnchanged() {
-      return request.resource.data.userId == resource.data.userId;
-    }
-
-    // ────────────────────────────────────────────────────────────────
-    // Atelier (document = uid de l'utilisateur)
-    // ────────────────────────────────────────────────────────────────
     match /ateliers/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Clients
-    // ────────────────────────────────────────────────────────────────
     match /clients/{docId} {
       allow read, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data)
-                    && hasField('nomComplet')
-                    && request.resource.data.nomComplet is string
-                    && request.resource.data.nomComplet.size() > 0;
-      allow update: if isOwner(resource.data)
-                    && userIdUnchanged()
-                    && hasField('nomComplet')
-                    && request.resource.data.nomComplet is string
-                    && request.resource.data.nomComplet.size() > 0;
+      allow update: if isOwner(resource.data) && isOwner(request.resource.data);
+      allow create: if isOwner(request.resource.data);
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Commandes
-    // ────────────────────────────────────────────────────────────────
     match /commandes/{docId} {
       allow read, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data)
-                    && hasField('clientId')
-                    && hasField('description')
-                    && request.resource.data.description is string
-                    && request.resource.data.description.size() > 0
-                    && hasField('prixTotal')
-                    && request.resource.data.prixTotal is number
-                    && request.resource.data.prixTotal >= 0;
-      allow update: if isOwner(resource.data)
-                    && userIdUnchanged();
+      allow update: if isOwner(resource.data) && isOwner(request.resource.data);
+      allow create: if isOwner(request.resource.data);
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Paiements — immuables après création (pas d'update)
-    // Pour corriger un paiement : supprimer + recréer.
-    // ────────────────────────────────────────────────────────────────
     match /paiements/{docId} {
       allow read, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data)
-                    && hasField('commandeId')
-                    && hasField('montant')
-                    && request.resource.data.montant is number
-                    && request.resource.data.montant > 0;
-      // Pas d'update intentionnel : les paiements sont des enregistrements
-      // comptables et ne doivent pas être modifiés après saisie.
+      allow update: if isOwner(resource.data) && isOwner(request.resource.data);
+      allow create: if isOwner(request.resource.data);
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Fiches mesures
-    // ────────────────────────────────────────────────────────────────
     match /fiches/{docId} {
       allow read, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data)
-                    && hasField('clientId')
-                    && hasField('titre')
-                    && request.resource.data.titre is string
-                    && request.resource.data.titre.size() > 0;
-      allow update: if isOwner(resource.data)
-                    && userIdUnchanged();
+      allow update: if isOwner(resource.data) && isOwner(request.resource.data);
+      allow create: if isOwner(request.resource.data);
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Modèles de fabrication
-    // ────────────────────────────────────────────────────────────────
     match /modeles/{docId} {
       allow read, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data)
-                    && hasField('nom')
-                    && request.resource.data.nom is string
-                    && request.resource.data.nom.size() > 0;
-      allow update: if isOwner(resource.data)
-                    && userIdUnchanged();
+      allow update: if isOwner(resource.data) && isOwner(request.resource.data);
+      allow create: if isOwner(request.resource.data);
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Stock
-    // ────────────────────────────────────────────────────────────────
     match /stock/{docId} {
       allow read, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data)
-                    && hasField('nom')
-                    && request.resource.data.nom is string
-                    && request.resource.data.nom.size() > 0
-                    && hasField('quantite')
-                    && request.resource.data.quantite is number
-                    && request.resource.data.quantite >= 0;
-      allow update: if isOwner(resource.data)
-                    && userIdUnchanged();
+      allow update: if isOwner(resource.data) && isOwner(request.resource.data);
+      allow create: if isOwner(request.resource.data);
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Historique des modifications — append-only (pas d'update ni delete
-    // par le client pour préserver l'intégrité de l'audit trail).
-    // ────────────────────────────────────────────────────────────────
     match /historique_modifications/{docId} {
-      allow read: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data)
-                    && hasField('commandeId')
-                    && hasField('champModifie');
-      // Pas d'update ni delete : l'historique est immuable côté client.
+      allow read, delete: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Compteurs (séquences de numéros de commande)
-    // ────────────────────────────────────────────────────────────────
     match /compteurs/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }

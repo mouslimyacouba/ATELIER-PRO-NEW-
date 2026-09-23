@@ -399,21 +399,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: const Text('Confidentialité des données'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Confidentialité'),
-                      content: const Text(
-                        'Tes données (clients, commandes, paiements) sont stockées sur Firebase et '
-                        'ne sont accessibles qu\'à ton compte. Aucune donnée n\'est partagée avec des tiers.',
-                      ),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: const Text('Fermer')),
-                      ],
-                    ),
-                  ),
+                  onTap: () => context.push('/parametres/confidentialite'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.gavel_outlined),
+                  title: const Text('Conditions d\'utilisation (CGU)'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/parametres/cgu'),
                 ),
               ],
             ),

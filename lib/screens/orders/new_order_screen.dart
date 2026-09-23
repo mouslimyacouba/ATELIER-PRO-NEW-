@@ -490,6 +490,9 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
               child: const Text('Précédent')),
         const Spacer(),
         ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(120, 48),
+          ),
           onPressed: () {
             if (_currentStep == NewOrderStep.fabricationAcompte)
               _submit();

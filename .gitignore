@@ -45,3 +45,10 @@ ios/.symlinks/
 .DS_Store
 # Widget Preview related
 .widget_preview/
+
+# Build & Tool Cache
+.gradle/
+.kiro/
+release/
+.agents/
+

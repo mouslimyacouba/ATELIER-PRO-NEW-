@@ -41,7 +41,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
 
   Future<void> _changePhoto() async {
     final file = await StorageService.pickImage();
-    if (file == null) return;
+    if (file == null || !mounted) return;
 
     setState(() => _uploadingPhoto = true);
     try {
@@ -53,6 +53,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         key: widget.clientId,
         file: file,
       );
+      if (!mounted) return;
       final error = await context.read<ClientsProvider>().updatePhoto(widget.clientId, url);
       if (mounted && error != null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -215,7 +216,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             children: [
               const Text('Commandes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               TextButton.icon(
-                onPressed: () => context.go('/commandes/nouvelle?clientId=${client.id}'),
+                onPressed: () => context.push('/commandes/nouvelle?clientId=${client.id}'),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Nouvelle'),
               ),
@@ -231,7 +232,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
               Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  onTap: () => context.go('/commandes/${order.id}'),
+                  onTap: () => context.push('/commandes/${order.id}'),
                   title: Text(order.description, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text('${_money.format(order.prixTotal)} · reste ${_money.format(order.remaining)}'),
                   trailing: StatusPill(label: order.status.label, color: order.status.color),

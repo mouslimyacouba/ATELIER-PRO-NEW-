@@ -23,17 +23,30 @@ class ConnectivityBanner extends StatelessWidget {
 
         return Container(
           width: double.infinity,
-          color: AtelierProColors.orangeAttente.withValues(alpha: 0.15),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
+          decoration: BoxDecoration(
+            color: AtelierProColors.primaryContainer,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off, size: 16, color: AtelierProColors.orangeAttente),
-              const SizedBox(width: 8),
+              Icon(Icons.wifi_off_rounded, size: 18, color: Color(0xFFF59E0B)),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Mode hors-ligne — tes modifications seront synchronisées à la reconnexion.',
-                  style: TextStyle(fontSize: 12, color: AtelierProColors.orangeAttente.withValues(alpha: 0.9)),
+                  'Mode hors-ligne — Vos modifications sont enregistrées localement et seront synchronisées.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],

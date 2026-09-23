@@ -87,6 +87,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         key: '${order.id}_${DateTime.now().millisecondsSinceEpoch}',
         file: file,
       );
+      if (!mounted) return;
       final error =
           await context.read<OrdersProvider>().addPhoto(order.id, url);
       if (mounted && error != null) {

@@ -153,7 +153,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       title: 'Aucune commande',
                                       subtitle: 'Créez votre première commande pour commencer le suivi.',
                                       actionLabel: 'Nouvelle commande',
-                                      onAction: () => context.go('/commandes/nouvelle'),
+                                      onAction: () => context.push('/commandes/nouvelle'),
                                     )
                           : ListView.separated(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -165,7 +165,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 return Card(
                                   child: ListTile(
                                     onTap: () =>
-                                        context.go('/commandes/${order.id}'),
+                                        context.push('/commandes/${order.id}'),
                                     title: Text(order.clientName ?? 'Client'),
                                     subtitle: Text(
                                       '${order.description}\n${_money.format(order.totalAmount)} · reste ${_money.format(order.remaining)}',
@@ -184,7 +184,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/commandes/nouvelle'),
+        onPressed: () => context.push('/commandes/nouvelle'),
         child: const Icon(Icons.add),
       ),
     );

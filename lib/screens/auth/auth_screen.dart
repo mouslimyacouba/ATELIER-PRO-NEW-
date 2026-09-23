@@ -65,35 +65,16 @@ class _AuthScreenState extends State<AuthScreen> {
         return;
       }
 
-      // Vérification e-mail
+      // Envoi de l'e-mail de confirmation.
+      // On conserve la session active afin que le routeur redirige
+      // automatiquement l'utilisateur vers l'écran /verify-email.
       await auth.sendEmailVerification();
-      await auth.signOut();
       if (!mounted) return;
 
       setState(() {
         _loading = false;
-        _isSignUp = false;
-        _passwordCtrl.clear();
         _error = null;
       });
-
-      if (mounted) {
-        showDialog<void>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Compte créé 🎉'),
-            content: Text(
-              "Un e-mail de confirmation a été envoyé à ${_emailCtrl.text.trim()}. "
-              "Vérifie ta boîte de réception, puis connecte-toi ci-dessous.",
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('OK')),
-            ],
-          ),
-        );
-      }
       return;
     }
 
@@ -245,18 +226,20 @@ class _AuthScreenState extends State<AuthScreen> {
                   : () async {
                       if (!formKey.currentState!.validate()) return;
                       setDialogState(() => sending = true);
-                      final error = await context
-                          .read<AuthProvider>()
-                          .resetPasswordForEmail(emailCtrl.text.trim());
-                      if (ctx.mounted) {
-                        Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(error ??
-                                "E-mail envoyé — vérifie ta boîte de réception."),
-                          ),
-                        );
-                      }
+                      // Capture du provider avant l'await pour éviter
+                      // l'utilisation de context à travers un gap async.
+                      final authProvider = context.read<AuthProvider>();
+                      final email = emailCtrl.text.trim();
+                      final error = await authProvider.resetPasswordForEmail(email);
+                      if (!ctx.mounted) return;
+                      Navigator.of(ctx).pop();
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(error ??
+                              "E-mail envoyé — vérifie ta boîte de réception."),
+                        ),
+                      );
                     },
               child: sending
                   ? const SizedBox(

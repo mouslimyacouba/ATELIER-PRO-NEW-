@@ -1,84 +1,118 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Palette du 2e design system "AtelierPro" généré sur Stitch — mode sombre
-/// "Tactile Modernism / High-Contrast Dark Elegance", pensé pour la
-/// lisibilité en plein soleil et en atelier peu éclairé. Remplace la
-/// première version claire (espresso/ocre). Les noms historiques
-/// (terracotta, sable, encre...) sont conservés pour éviter de retoucher
-/// chaque écran, mais pointent désormais vers les nouvelles valeurs.
+/// Design System "Sahara Craft Tech" — Tactile Modernist
+/// Palette et typographie pour l'application AtelierPro (Niger).
 class AtelierProColors {
   // --- Marque ---
-  static const primary = Color(0xFFFF6B00); // Orange "sécurité atelier" — CTA, FAB, actifs
+  static const primary = Color(0xFF001F41); // Indigo Océanique Profond
   static const onPrimary = Colors.white;
-  static const secondary = Color(0xFFBAC7E1);
-  static const tertiary = Color(0xFF4EDEA3); // Vert menthe — état "livré"
+  static const primaryContainer = Color(0xFF0F3460); // Navy de structure
+  static const onPrimaryContainer = Color(0xFF7F9DD0);
 
-  // --- Surfaces (mode sombre) ---
-  static const surface = Color(0xFF070E18); // fond général (surface-base)
-  static const surfaceContainerLow = Color(0xFF0B1B35);
-  static const surfaceContainer = Color(0xFF0F223D); // cartes standard (surface-card)
-  static const surfaceContainerHigh = Color(0xFF172E4F); // modales, feuilles (surface-elevated)
-  static const surfaceHighlight = Color(0xFF1E3B64);
-  static const onSurface = Color(0xFFFFFFFF);
-  static const onSurfaceVariant = Color(0xFFCBD5E1); // texte secondaire
-  static const onSurfaceMuted = Color(0xFF64748B); // texte tertiaire/désactivé
-  static const outlineVariant = Color(0xFF1B3356); // bordures fines
+  static const secondary = Color(0xFFA83900); // Terracotta / Ambre
+  static const onSecondary = Colors.white;
+  static const secondaryContainer = Color(0xFFFC6018); // Accent vif FAB / CTA
+  static const onSecondaryContainer = Color(0xFF531800);
+  static const secondaryFixed = Color(0xFFFFDBCF);
+  static const secondaryFixedDim = Color(0xFFFFB59A);
+  static const primaryFixed = Color(0xFFD5E3FF);
+  static const tertiaryFixedDim = Color(0xFF4EDEA3);
+
+  static const tertiary = Color(0xFF002416); // Vert sombre de réglage
+  static const onTertiary = Colors.white;
+  static const tertiaryContainer = Color(0xFF003C27);
+  static const onTertiaryContainer = Color(0xFF00B27B); // Vert opérationnel réglé
+
+  // --- Surfaces & Conteneurs (Mode Albâtre Clair) ---
+  static const surface = Color(0xFFFAF8FF); // Canvas de fond principal (anti-éblouissement)
+  static const surfaceDim = Color(0xFFD2D9F4);
+  static const surfaceBright = Color(0xFFFAF8FF);
+  static const surfaceContainerLowest = Color(0xFFFFFFFF); // Cartes & Inputs
+  static const surfaceContainerLow = Color(0xFFF2F3FF);
+  static const surfaceContainer = Color(0xFFEAEDFF);
+  static const surfaceContainerHigh = Color(0xFFE2E7FF); // Modales & Bottom Sheets
+  static const surfaceContainerHighest = Color(0xFFDAE2FD);
+
+  static const onSurface = Color(0xFF131B2E); // Encre noire haute densité
+  static const onSurfaceVariant = Color(0xFF43474F); // Métadonnées & sous-titres
+  static const onSurfaceMuted = Color(0xFF747780); // Texte désactivé
+  static const outline = Color(0xFF747780);
+  static const outlineVariant = Color(0xFFC3C6D0); // Bordures fines de précision
 
   // --- Statuts de commande ---
-  static const statusPending = Color(0xFFF59E0B); // en_attente
-  static const statusProgress = Color(0xFF38BDF8); // en_cours
-  static const statusDone = Color(0xFF10B981); // termine
-  static const statusDelivered = Color(0xFF4EDEA3); // livre
-  static const statusUrgent = Color(0xFFEF4444); // retards, alertes
+  static const statusPending = Color(0xFFFC6018); // En attente / Acompte versé
+  static const statusProgress = Color(0xFF0F3460); // En cours de fabrication
+  static const statusDone = Color(0xFF10B981); // Terminé / Prêt
+  static const statusDelivered = Color(0xFF00B27B); // Livré
+  static const statusUrgent = Color(0xFFBA1A1A); // Retards, alertes
 
   static const whatsappGreen = Color(0xFF25D366);
 
-  // --- Alias historiques (compat avec les écrans existants) ---
-  static const terracotta = primary;
+  // --- Alias historiques (compatibilité avec le code existant) ---
+  static const terracotta = secondaryContainer;
   static const sable = surface;
   static const encre = onSurface;
   static const vertSucces = statusDone;
   static const orangeAttente = statusPending;
   static const rougeAlerte = statusUrgent;
-  static const secondaryContainer = Color(0xFF3D4A5F); // pastille active nav
 }
 
 class AtelierProTheme {
-  /// Le design system "AtelierPro" v2 est mono-police (Outfit), y compris
-  /// pour les titres — plus de séparation Hanken/Source Sans comme avant.
+  /// Typographie basée sur Plus Jakarta Sans
   static TextTheme get _textTheme {
-    final base = GoogleFonts.outfitTextTheme().apply(
+    final base = GoogleFonts.plusJakartaSansTextTheme().apply(
       bodyColor: AtelierProColors.onSurface,
       displayColor: AtelierProColors.onSurface,
     );
     return base.copyWith(
-      headlineLarge: base.headlineLarge?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.02),
-      headlineMedium: base.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
-      headlineSmall: base.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
-      titleLarge: base.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-      titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-      titleSmall: base.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+      displayLarge: base.displayLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 32, height: 1.25, letterSpacing: -0.64),
+      headlineLarge: base.headlineLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 24, height: 1.33, letterSpacing: -0.24),
+      headlineMedium: base.headlineMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 20, height: 1.4),
+      titleLarge: base.titleLarge?.copyWith(fontWeight: FontWeight.w600, fontSize: 18, height: 1.33),
+      titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 16, height: 1.38),
+      bodyLarge: base.bodyLarge?.copyWith(fontWeight: FontWeight.w400, fontSize: 16, height: 1.5),
+      bodyMedium: base.bodyMedium?.copyWith(fontWeight: FontWeight.w400, fontSize: 14, height: 1.43),
+      bodySmall: base.bodySmall?.copyWith(fontWeight: FontWeight.w400, fontSize: 12, height: 1.33),
+      labelMedium: base.labelMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 13, height: 1.38, letterSpacing: 0.13),
+      labelSmall: base.labelSmall?.copyWith(fontWeight: FontWeight.w700, fontSize: 11, height: 1.27, letterSpacing: 0.44),
     );
   }
 
-  /// Style pour les montants FCFA (`currency-display` du design system) —
-  /// à utiliser explicitement là où ça a du sens (totaux, soldes), pas
-  /// comme police globale.
+  /// Formatage numérique spécial pour les montants FCFA (`currency-display`)
+  static TextStyle currencyDisplayStyle({double fontSize = 22, FontWeight fontWeight = FontWeight.w800, Color? color}) =>
+      GoogleFonts.plusJakartaSans(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color ?? AtelierProColors.primary,
+        letterSpacing: -0.44,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      );
+
+  /// Alias de compatibilité pour les écrans existants
   static TextStyle dataStyle({double fontSize = 14, FontWeight fontWeight = FontWeight.w700, Color? color}) =>
-      GoogleFonts.outfit(fontSize: fontSize, fontWeight: fontWeight, color: color, letterSpacing: -0.01);
+      currencyDisplayStyle(fontSize: fontSize, fontWeight: fontWeight, color: color);
+
 
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AtelierProColors.primary,
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
         primary: AtelierProColors.primary,
         onPrimary: AtelierProColors.onPrimary,
+        primaryContainer: AtelierProColors.primaryContainer,
+        onPrimaryContainer: AtelierProColors.onPrimaryContainer,
         secondary: AtelierProColors.secondary,
+        onSecondary: AtelierProColors.onSecondary,
+        secondaryContainer: AtelierProColors.secondaryContainer,
+        onSecondaryContainer: AtelierProColors.onSecondaryContainer,
         tertiary: AtelierProColors.tertiary,
+        onTertiary: AtelierProColors.onTertiary,
+        tertiaryContainer: AtelierProColors.tertiaryContainer,
+        onTertiaryContainer: AtelierProColors.onTertiaryContainer,
         surface: AtelierProColors.surface,
         onSurface: AtelierProColors.onSurface,
         error: AtelierProColors.statusUrgent,
@@ -89,81 +123,87 @@ class AtelierProTheme {
 
     return base.copyWith(
       appBarTheme: AppBarTheme(
-        backgroundColor: AtelierProColors.surface,
+        backgroundColor: AtelierProColors.surfaceContainerLowest,
         foregroundColor: AtelierProColors.onSurface,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.outfit(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AtelierProColors.onSurface,
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AtelierProColors.primary,
         ),
-        iconTheme: const IconThemeData(color: AtelierProColors.onSurface),
+        iconTheme: const IconThemeData(color: AtelierProColors.primary),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: AtelierProColors.surfaceContainer,
+        color: AtelierProColors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AtelierProColors.outlineVariant),
+          side: const BorderSide(color: AtelierProColors.outlineVariant, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AtelierProColors.primary,
+          backgroundColor: AtelierProColors.primaryContainer,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: AtelierProColors.primary.withValues(alpha: 0.4),
+          disabledBackgroundColor: AtelierProColors.primaryContainer.withValues(alpha: 0.4),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 15),
+          minimumSize: const Size.fromHeight(48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 15),
           elevation: 0,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AtelierProColors.onSurface,
-          side: const BorderSide(color: AtelierProColors.outlineVariant, width: 1.5),
+          foregroundColor: AtelierProColors.primary,
+          side: const BorderSide(color: AtelierProColors.outlineVariant, width: 1),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+          minimumSize: const Size.fromHeight(48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 14),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AtelierProColors.primary,
-          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+          foregroundColor: AtelierProColors.secondaryContainer,
+          textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AtelierProColors.surface,
+        fillColor: AtelierProColors.surfaceContainerLowest,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AtelierProColors.outlineVariant, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AtelierProColors.outlineVariant, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AtelierProColors.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AtelierProColors.primaryContainer, width: 2),
         ),
-        labelStyle: GoogleFonts.outfit(fontSize: 12, color: AtelierProColors.onSurfaceVariant),
-        hintStyle: GoogleFonts.outfit(fontSize: 14, color: AtelierProColors.onSurfaceMuted),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AtelierProColors.statusUrgent, width: 1),
+        ),
+        labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AtelierProColors.onSurfaceVariant),
+        hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: AtelierProColors.onSurfaceMuted),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AtelierProColors.primary,
+        backgroundColor: AtelierProColors.secondaryContainer,
         foregroundColor: Colors.white,
         elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(9999))),
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 12),
-        backgroundColor: AtelierProColors.surfaceContainer,
+        labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 12),
+        backgroundColor: AtelierProColors.surfaceContainerLowest,
         side: const BorderSide(color: AtelierProColors.outlineVariant),
       ),
       dividerTheme: const DividerThemeData(color: AtelierProColors.outlineVariant, thickness: 1),
@@ -173,39 +213,38 @@ class AtelierProTheme {
         textColor: AtelierProColors.onSurface,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AtelierProColors.surfaceContainer,
-        indicatorColor: AtelierProColors.primary.withValues(alpha: 0.18),
+        backgroundColor: AtelierProColors.surfaceContainerLowest,
+        indicatorColor: AtelierProColors.secondaryContainer.withValues(alpha: 0.15),
         labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => GoogleFonts.outfit(
+          (states) => GoogleFonts.plusJakartaSans(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: states.contains(WidgetState.selected) ? AtelierProColors.primary : AtelierProColors.onSurfaceMuted,
+            color: states.contains(WidgetState.selected) ? AtelierProColors.secondaryContainer : AtelierProColors.onSurfaceMuted,
           ),
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: AtelierProColors.surfaceContainerHigh,
-        textStyle: GoogleFonts.outfit(color: AtelierProColors.onSurface, fontSize: 14),
+        color: AtelierProColors.surfaceContainerLowest,
+        textStyle: GoogleFonts.plusJakartaSans(color: AtelierProColors.onSurface, fontSize: 14),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: AtelierProColors.surfaceContainerHigh,
-        titleTextStyle: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: AtelierProColors.onSurface),
-        contentTextStyle: GoogleFonts.outfit(fontSize: 14, color: AtelierProColors.onSurfaceVariant),
+        backgroundColor: AtelierProColors.surfaceContainerLowest,
+        titleTextStyle: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: AtelierProColors.onSurface),
+        contentTextStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: AtelierProColors.onSurfaceVariant),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AtelierProColors.surfaceContainerHigh,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        backgroundColor: AtelierProColors.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AtelierProColors.surfaceContainerHigh,
-        contentTextStyle: GoogleFonts.outfit(color: AtelierProColors.onSurface),
+        backgroundColor: AtelierProColors.primaryContainer,
+        contentTextStyle: GoogleFonts.plusJakartaSans(color: Colors.white),
       ),
     );
   }
 }
 
-/// Petit badge "pill" pour les statuts, avec le point coloré caractéristique
-/// du design system Stitch (voir Components > Chips).
+/// Badge "pill" interactif pour les statuts
 class StatusPill extends StatelessWidget {
   final String label;
   final Color color;
@@ -216,18 +255,19 @@ class StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(9999),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 }
+

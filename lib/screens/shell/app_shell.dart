@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/connectivity_banner.dart';
 import '../../core/theme.dart';
@@ -25,28 +26,42 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentIndex = _currentIndex(context);
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const ConnectivityBanner(),
-            Expanded(child: child),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final router = GoRouter.of(context);
+        if (router.canPop()) {
+          router.pop();
+        } else if (currentIndex != 0) {
+          context.go('/');
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              const ConnectivityBanner(),
+              Expanded(child: child),
+            ],
+          ),
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: currentIndex,
+          onDestinationSelected: (i) => context.go(_tabs[i].$1),
+          backgroundColor: AtelierProColors.surfaceContainer,
+          indicatorColor: AtelierProColors.secondaryContainer,
+          destinations: [
+            for (final tab in _tabs)
+              NavigationDestination(
+                icon: Icon(tab.$2, color: AtelierProColors.onSurfaceVariant),
+                selectedIcon: Icon(tab.$3, color: AtelierProColors.primary),
+                label: tab.$4,
+              ),
           ],
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: (i) => context.go(_tabs[i].$1),
-        backgroundColor: AtelierProColors.surfaceContainer,
-        indicatorColor: AtelierProColors.secondaryContainer,
-        destinations: [
-          for (final tab in _tabs)
-            NavigationDestination(
-              icon: Icon(tab.$2, color: AtelierProColors.onSurfaceVariant),
-              selectedIcon: Icon(tab.$3, color: AtelierProColors.primary),
-              label: tab.$4,
-            ),
-        ],
       ),
     );
   }

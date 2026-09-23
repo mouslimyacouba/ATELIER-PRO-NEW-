@@ -407,7 +407,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 label: 'Nouvelle',
                                 sublabel: 'Commande',
                                 filled: true,
-                                onTap: () => context.go('/commandes/nouvelle'),
+                                onTap: () => context.push('/commandes/nouvelle'),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -465,7 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                               TextButton(
-                                onPressed: () => context.go('/calendrier'),
+                                onPressed: () => context.push('/calendrier'),
                                 child: Text('Voir tout (${urgent.length})'),
                               ),
                             ],
@@ -488,7 +488,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 0.5)),
                               TextButton(
-                                onPressed: () => context.go('/historique/paiements'),
+                                onPressed: () => context.push('/historique/paiements'),
                                 child: const Text('Journal de caisse',
                                     style: TextStyle(fontSize: 12)),
                               ),
@@ -552,7 +552,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               margin: const EdgeInsets.only(bottom: 8),
                               child: ListTile(
                                 onTap: () =>
-                                    context.go('/commandes/${order.id}'),
+                                    context.push('/commandes/${order.id}'),
                                 title: Text(order.clientName ?? 'Client'),
                                 subtitle: Text(order.description,
                                     maxLines: 1,
@@ -570,7 +570,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/commandes/nouvelle'),
+        onPressed: () => context.push('/commandes/nouvelle'),
         icon: const Icon(Icons.add),
         label: const Text('Nouvelle commande'),
       ),
@@ -770,11 +770,6 @@ class _UrgentOrderCard extends StatelessWidget {
   final AtelierOrder order;
   final AtelierClient? client;
   const _UrgentOrderCard({required this.order, required this.client});
-
-  @override
-  Widget_build(BuildContext context) {
-    return const SizedBox.shrink();
-  }
 
   @override
   Widget build(BuildContext context) {
