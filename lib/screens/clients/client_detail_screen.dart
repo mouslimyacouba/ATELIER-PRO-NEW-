@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/contact_actions.dart';
+import '../../core/currency_formatter.dart';
 import '../../core/storage_service.dart';
 import '../../core/theme.dart';
 import '../../models/order.dart';
@@ -12,7 +13,7 @@ import '../../providers/clients_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../widgets/spinner.dart';
 
-final _money = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
+final _money = CurrencyFormatter.formatter;
 final _dateShort = DateFormat('dd/MM/yyyy');
 
 class ClientDetailScreen extends StatefulWidget {

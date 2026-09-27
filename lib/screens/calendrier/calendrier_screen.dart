@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../core/currency_formatter.dart';
 import '../../core/theme.dart';
 import '../../models/order.dart';
 import '../../providers/orders_provider.dart';
 
-final _money = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
+final _money = CurrencyFormatter.formatter;
 const _joursSemaine = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const _moisNoms = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',

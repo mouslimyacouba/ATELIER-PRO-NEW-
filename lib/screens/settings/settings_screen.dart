@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../models/type_atelier.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -263,12 +264,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final atelier = context.watch<AtelierProvider>().atelier;
     final user = context.watch<AuthProvider>().user;
+    final themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Paramètres')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Card(
+            child: SwitchListTile(
+              secondary: const Icon(Icons.dark_mode_outlined),
+              title: const Text('Mode sombre'),
+              value: themeProvider.isDarkMode,
+              onChanged: (value) => themeProvider.toggleTheme(value),
+            ),
+          ),
+          const SizedBox(height: 8),
           Card(
             child: ListTile(
               leading: GestureDetector(

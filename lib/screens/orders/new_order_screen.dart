@@ -32,6 +32,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
 
   final TextEditingController _descCtrl = TextEditingController();
   final TextEditingController _amountCtrl = TextEditingController();
+  final TextEditingController _acompteCtrl = TextEditingController(text: '0');
   final TextEditingController _coutMateriauxCtrl =
       TextEditingController(text: '0');
   final TextEditingController _coutMainDoeuvreCtrl =
@@ -56,6 +57,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   void dispose() {
     _descCtrl.dispose();
     _amountCtrl.dispose();
+    _acompteCtrl.dispose();
     _coutMateriauxCtrl.dispose();
     _coutMainDoeuvreCtrl.dispose();
     _coutTransportCtrl.dispose();
@@ -157,7 +159,10 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
                     _amountCtrl.text.replaceAll(',', '.'),
                   ) ??
                   0,
-              acompte: 0,
+              acompte: double.tryParse(
+                    _acompteCtrl.text.replaceAll(',', '.'),
+                  ) ??
+                  0,
               createdAt: DateTime.now(),
               ficheMesureId: _ficheMesureId,
               modeleId: _modeleId,
@@ -366,10 +371,27 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
           decoration: const InputDecoration(
               labelText: 'Prix de vente au client (FCFA) *',
               border: OutlineInputBorder()),
-          validator: (v) {
+            validator: (v) {
             if (v == null || v.trim().isEmpty) return 'Le prix est requis';
             final amount = double.tryParse(v.replaceAll(',', '.'));
             if (amount == null || amount < 0) return 'Montant invalide';
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _acompteCtrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+              labelText: 'Acompte versé (optionnel)',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.payments_outlined)),
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) return null;
+            final acompte = double.tryParse(v.replaceAll(',', '.'));
+            if (acompte == null || acompte < 0) return 'Montant invalide';
+            final total = double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0;
+            if (acompte > total) return 'L\'acompte ne peut pas dépasser le prix total';
             return null;
           },
         ),

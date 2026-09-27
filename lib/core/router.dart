@@ -26,6 +26,7 @@ import '../screens/debug/metier_debug_screen.dart';
 import '../screens/historique/commandes_historique_screen.dart';
 import '../screens/historique/paiements_historique_screen.dart';
 import '../screens/calendrier/calendrier_screen.dart';
+import '../screens/rapports/reports_screen.dart';
 
 GoRouter buildRouter(BuildContext context) {
   final auth = context.read<AuthProvider>();
@@ -137,6 +138,10 @@ GoRouter buildRouter(BuildContext context) {
           GoRoute(
             path: '/calendrier',
             builder: (context, state) => const CalendrierScreen(),
+          ),
+          GoRoute(
+            path: '/rapports',
+            builder: (context, state) => const ReportsScreen(),
           ),
         ],
       ),

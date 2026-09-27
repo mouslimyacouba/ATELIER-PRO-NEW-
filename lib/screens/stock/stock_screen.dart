@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../core/currency_formatter.dart';
 import '../../providers/stock_provider.dart';
 import '../../providers/atelier_provider.dart';
 import '../../core/theme.dart';
@@ -10,7 +10,7 @@ import '../../models/stock_item.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/spinner.dart';
 
-final _money = NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
+final _money = CurrencyFormatter.formatter;
 
 class StockScreen extends StatefulWidget {
   const StockScreen({super.key});

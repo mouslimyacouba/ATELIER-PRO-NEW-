@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-enum OrderStatus { enAttente, enCours, termine, livre }
+enum OrderStatus { enAttente, enCours, termine, livre, annule }
 
 extension OrderStatusX on OrderStatus {
   String get value {
@@ -14,6 +14,8 @@ extension OrderStatusX on OrderStatus {
         return 'termine';
       case OrderStatus.livre:
         return 'livre';
+      case OrderStatus.annule:
+        return 'annule';
     }
   }
 
@@ -27,6 +29,8 @@ extension OrderStatusX on OrderStatus {
         return 'Terminée';
       case OrderStatus.livre:
         return 'Livrée';
+      case OrderStatus.annule:
+        return 'Annulée';
     }
   }
 
@@ -40,6 +44,8 @@ extension OrderStatusX on OrderStatus {
         return const Color(0xFF10B981);
       case OrderStatus.livre:
         return const Color(0xFF6366F1);
+      case OrderStatus.annule:
+        return const Color(0xFFEF4444);
     }
   }
 

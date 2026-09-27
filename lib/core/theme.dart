@@ -24,7 +24,7 @@ class AtelierProColors {
   static const tertiaryContainer = Color(0xFF003C27);
   static const onTertiaryContainer = Color(0xFF00B27B); // Vert opérationnel réglé
 
-  // --- Surfaces & Conteneurs (Mode Albâtre Clair) ---
+  // --- surfaces & Conteneurs (Mode Albâtre Clair) ---
   static const surface = Color(0xFFFAF8FF); // Canvas de fond principal (anti-éblouissement)
   static const surfaceDim = Color(0xFFD2D9F4);
   static const surfaceBright = Color(0xFFFAF8FF);
@@ -34,11 +34,27 @@ class AtelierProColors {
   static const surfaceContainerHigh = Color(0xFFE2E7FF); // Modales & Bottom Sheets
   static const surfaceContainerHighest = Color(0xFFDAE2FD);
 
+  // --- Surfaces & Conteneurs (Mode Nuit Profonde) ---
+  static const surfaceDark = Color(0xFF0B1220); // Fond sombre indigo
+  static const surfaceDimDark = Color(0xFF050B18);
+  static const surfaceBrightDark = Color(0xFF1E2638);
+  static const surfaceContainerLowestDark = Color(0xFF020408);
+  static const surfaceContainerLowDark = Color(0xFF131B2E);
+  static const surfaceContainerDark = Color(0xFF1E2638); // Cartes en mode sombre
+  static const surfaceContainerHighDark = Color(0xFF28324D);
+  static const surfaceContainerHighestDark = Color(0xFF333E5D);
+
   static const onSurface = Color(0xFF131B2E); // Encre noire haute densité
+  static const onSurfaceDark = Color(0xFFE2E7FF); // Texte clair
   static const onSurfaceVariant = Color(0xFF43474F); // Métadonnées & sous-titres
+  static const onSurfaceVariantDark = Color(0xFFC3C6D0);
   static const onSurfaceMuted = Color(0xFF747780); // Texte désactivé
+  static const onSurfaceMutedDark = Color(0xFF8E9199);
+
   static const outline = Color(0xFF747780);
+  static const outlineDark = Color(0xFF8E9199);
   static const outlineVariant = Color(0xFFC3C6D0); // Bordures fines de précision
+  static const outlineVariantDark = Color(0xFF43474F);
 
   // --- Statuts de commande ---
   static const statusPending = Color(0xFFFC6018); // En attente / Acompte versé
@@ -60,10 +76,11 @@ class AtelierProColors {
 
 class AtelierProTheme {
   /// Typographie basée sur Plus Jakarta Sans
-  static TextTheme get _textTheme {
+  static TextTheme _textTheme(Brightness brightness) {
+    final color = brightness == Brightness.light ? AtelierProColors.onSurface : AtelierProColors.onSurfaceDark;
     final base = GoogleFonts.plusJakartaSansTextTheme().apply(
-      bodyColor: AtelierProColors.onSurface,
-      displayColor: AtelierProColors.onSurface,
+      bodyColor: color,
+      displayColor: color,
     );
     return base.copyWith(
       displayLarge: base.displayLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 32, height: 1.25, letterSpacing: -0.64),
@@ -80,18 +97,18 @@ class AtelierProTheme {
   }
 
   /// Formatage numérique spécial pour les montants FCFA (`currency-display`)
-  static TextStyle currencyDisplayStyle({double fontSize = 22, FontWeight fontWeight = FontWeight.w800, Color? color}) =>
+  static TextStyle currencyDisplayStyle({double fontSize = 22, FontWeight fontWeight = FontWeight.w800, Color? color, Brightness brightness = Brightness.light}) =>
       GoogleFonts.plusJakartaSans(
         fontSize: fontSize,
         fontWeight: fontWeight,
-        color: color ?? AtelierProColors.primary,
+        color: color ?? (brightness == Brightness.light ? AtelierProColors.primary : AtelierProColors.onSurfaceDark),
         letterSpacing: -0.44,
         fontFeatures: const [FontFeature.tabularFigures()],
       );
 
   /// Alias de compatibilité pour les écrans existants
-  static TextStyle dataStyle({double fontSize = 14, FontWeight fontWeight = FontWeight.w700, Color? color}) =>
-      currencyDisplayStyle(fontSize: fontSize, fontWeight: fontWeight, color: color);
+  static TextStyle dataStyle({double fontSize = 14, FontWeight fontWeight = FontWeight.w700, Color? color, Brightness brightness = Brightness.light}) =>
+      currencyDisplayStyle(fontSize: fontSize, fontWeight: fontWeight, color: color, brightness: brightness);
 
 
   static ThemeData get light {
@@ -118,36 +135,73 @@ class AtelierProTheme {
         error: AtelierProColors.statusUrgent,
       ),
       scaffoldBackgroundColor: AtelierProColors.surface,
-      textTheme: _textTheme,
+      textTheme: _textTheme(Brightness.light),
     );
+
+    return _applyCommonTheme(base, Brightness.light);
+  }
+
+  static ThemeData get dark {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AtelierProColors.primary,
+        brightness: Brightness.dark,
+        primary: AtelierProColors.primaryFixed, // Utilisation d'une variante plus claire
+        onPrimary: AtelierProColors.primary,
+        primaryContainer: AtelierProColors.primaryContainer,
+        onPrimaryContainer: AtelierProColors.onPrimaryContainer,
+        secondary: AtelierProColors.secondaryFixedDim,
+        onSecondary: AtelierProColors.onSecondaryContainer,
+        secondaryContainer: AtelierProColors.secondaryContainer,
+        onSecondaryContainer: Colors.white,
+        tertiary: AtelierProColors.tertiaryFixedDim,
+        onTertiary: AtelierProColors.tertiaryContainer,
+        surface: AtelierProColors.surfaceDark,
+        onSurface: AtelierProColors.onSurfaceDark,
+        error: AtelierProColors.statusUrgent,
+      ),
+      scaffoldBackgroundColor: AtelierProColors.surfaceDark,
+      textTheme: _textTheme(Brightness.dark),
+    );
+
+    return _applyCommonTheme(base, Brightness.dark);
+  }
+
+  static ThemeData _applyCommonTheme(ThemeData base, Brightness brightness) {
+    final isLight = brightness == Brightness.light;
+    final surfaceColor = isLight ? AtelierProColors.surfaceContainerLowest : AtelierProColors.surfaceContainerDark;
+    final onSurfaceColor = isLight ? AtelierProColors.onSurface : AtelierProColors.onSurfaceDark;
+    final outlineColor = isLight ? AtelierProColors.outlineVariant : AtelierProColors.outlineVariantDark;
 
     return base.copyWith(
       appBarTheme: AppBarTheme(
-        backgroundColor: AtelierProColors.surfaceContainerLowest,
-        foregroundColor: AtelierProColors.onSurface,
+        backgroundColor: isLight ? AtelierProColors.surfaceContainerLowest : AtelierProColors.surfaceDark,
+        foregroundColor: onSurfaceColor,
         elevation: 0,
         centerTitle: false,
         titleTextStyle: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w700,
-          color: AtelierProColors.primary,
+          color: isLight ? AtelierProColors.primary : AtelierProColors.onSurfaceDark,
         ),
-        iconTheme: const IconThemeData(color: AtelierProColors.primary),
+        iconTheme: IconThemeData(color: isLight ? AtelierProColors.primary : AtelierProColors.onSurfaceDark),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: AtelierProColors.surfaceContainerLowest,
+        color: surfaceColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AtelierProColors.outlineVariant, width: 1),
+          side: BorderSide(color: outlineColor, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AtelierProColors.primaryContainer,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AtelierProColors.primaryContainer.withValues(alpha: 0.4),
+          backgroundColor: isLight ? AtelierProColors.primaryContainer : AtelierProColors.primaryFixed,
+          foregroundColor: isLight ? Colors.white : AtelierProColors.primary,
+          disabledBackgroundColor: (isLight ? AtelierProColors.primaryContainer : AtelierProColors.primaryFixed).withValues(alpha: 0.4),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -157,8 +211,8 @@ class AtelierProTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AtelierProColors.primary,
-          side: const BorderSide(color: AtelierProColors.outlineVariant, width: 1),
+          foregroundColor: isLight ? AtelierProColors.primary : AtelierProColors.onSurfaceDark,
+          side: BorderSide(color: outlineColor, width: 1),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -167,78 +221,80 @@ class AtelierProTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AtelierProColors.secondaryContainer,
+          foregroundColor: isLight ? AtelierProColors.secondaryContainer : AtelierProColors.secondaryFixedDim,
           textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AtelierProColors.surfaceContainerLowest,
+        fillColor: surfaceColor,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AtelierProColors.outlineVariant, width: 1),
+          borderSide: BorderSide(color: outlineColor, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AtelierProColors.outlineVariant, width: 1),
+          borderSide: BorderSide(color: outlineColor, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AtelierProColors.primaryContainer, width: 2),
+          borderSide: BorderSide(color: isLight ? AtelierProColors.primaryContainer : AtelierProColors.primaryFixed, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AtelierProColors.statusUrgent, width: 1),
         ),
-        labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AtelierProColors.onSurfaceVariant),
-        hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: AtelierProColors.onSurfaceMuted),
+        labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: isLight ? AtelierProColors.onSurfaceVariant : AtelierProColors.onSurfaceVariantDark),
+        hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: isLight ? AtelierProColors.onSurfaceMuted : AtelierProColors.onSurfaceMutedDark),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AtelierProColors.secondaryContainer,
         foregroundColor: Colors.white,
         elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(9999))),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(9999))),
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 12),
-        backgroundColor: AtelierProColors.surfaceContainerLowest,
-        side: const BorderSide(color: AtelierProColors.outlineVariant),
+        backgroundColor: surfaceColor,
+        side: BorderSide(color: outlineColor),
       ),
-      dividerTheme: const DividerThemeData(color: AtelierProColors.outlineVariant, thickness: 1),
-      iconTheme: const IconThemeData(color: AtelierProColors.onSurface),
-      listTileTheme: const ListTileThemeData(
-        iconColor: AtelierProColors.onSurfaceVariant,
-        textColor: AtelierProColors.onSurface,
+      dividerTheme: DividerThemeData(color: outlineColor, thickness: 1),
+      iconTheme: IconThemeData(color: onSurfaceColor),
+      listTileTheme: ListTileThemeData(
+        iconColor: isLight ? AtelierProColors.onSurfaceVariant : AtelierProColors.onSurfaceVariantDark,
+        textColor: onSurfaceColor,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AtelierProColors.surfaceContainerLowest,
+        backgroundColor: surfaceColor,
         indicatorColor: AtelierProColors.secondaryContainer.withValues(alpha: 0.15),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => GoogleFonts.plusJakartaSans(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: states.contains(WidgetState.selected) ? AtelierProColors.secondaryContainer : AtelierProColors.onSurfaceMuted,
+            color: states.contains(WidgetState.selected)
+                ? (isLight ? AtelierProColors.secondaryContainer : AtelierProColors.secondaryFixedDim)
+                : (isLight ? AtelierProColors.onSurfaceMuted : AtelierProColors.onSurfaceMutedDark),
           ),
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: AtelierProColors.surfaceContainerLowest,
-        textStyle: GoogleFonts.plusJakartaSans(color: AtelierProColors.onSurface, fontSize: 14),
+        color: surfaceColor,
+        textStyle: GoogleFonts.plusJakartaSans(color: onSurfaceColor, fontSize: 14),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: AtelierProColors.surfaceContainerLowest,
-        titleTextStyle: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: AtelierProColors.onSurface),
-        contentTextStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: AtelierProColors.onSurfaceVariant),
+        backgroundColor: surfaceColor,
+        titleTextStyle: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: onSurfaceColor),
+        contentTextStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: isLight ? AtelierProColors.onSurfaceVariant : AtelierProColors.onSurfaceVariantDark),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AtelierProColors.surfaceContainerLowest,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surfaceColor,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AtelierProColors.primaryContainer,
-        contentTextStyle: GoogleFonts.plusJakartaSans(color: Colors.white),
+        backgroundColor: isLight ? AtelierProColors.primaryContainer : AtelierProColors.surfaceContainerHighDark,
+        contentTextStyle: GoogleFonts.plusJakartaSans(color: isLight ? Colors.white : AtelierProColors.onSurfaceDark),
       ),
     );
   }

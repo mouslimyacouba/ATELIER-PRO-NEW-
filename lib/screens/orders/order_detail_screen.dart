@@ -12,14 +12,14 @@ import '../../models/client.dart';
 import '../../models/historique_entry.dart';
 import '../../models/order.dart';
 import '../../models/payment.dart';
+import '../../core/currency_formatter.dart';
 import '../../providers/atelier_provider.dart';
 import '../../providers/clients_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../providers/metier_provider.dart';
 import '../../widgets/spinner.dart';
 
-final _money =
-    NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
+final _money = CurrencyFormatter.formatter;
 final _date = DateFormat('dd/MM/yyyy à HH:mm');
 final _dateShort = DateFormat('dd/MM/yyyy');
 

@@ -22,6 +22,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _isSignUp = false;
+  bool _passwordVisible = false;
 
   // Téléphone
   final _phoneCtrl = TextEditingController();
@@ -189,67 +190,152 @@ class _AuthScreenState extends State<AuthScreen> {
     final emailCtrl = TextEditingController(text: _emailCtrl.text.trim());
     final formKey = GlobalKey<FormState>();
     bool sending = false;
+    bool sent = false;
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: !sending,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Mot de passe oublié'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "On t'envoie un lien par e-mail pour choisir un nouveau mot de passe.",
-                  style: TextStyle(
-                      fontSize: 13, color: AtelierProColors.onSurfaceVariant),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AtelierProColors.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? 'Email invalide' : null,
-                ),
-              ],
-            ),
+                child: const Icon(Icons.lock_reset_outlined,
+                    color: AtelierProColors.primary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Text('Mot de passe oublié',
+                  style:
+                      TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            ],
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Annuler')),
-            TextButton(
-              onPressed: sending
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      setDialogState(() => sending = true);
-                      // Capture du provider avant l'await pour éviter
-                      // l'utilisation de context à travers un gap async.
-                      final authProvider = context.read<AuthProvider>();
-                      final email = emailCtrl.text.trim();
-                      final error = await authProvider.resetPasswordForEmail(email);
-                      if (!ctx.mounted) return;
-                      Navigator.of(ctx).pop();
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(error ??
-                              "E-mail envoyé — vérifie ta boîte de réception."),
+          content: sent
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50).withAlpha(20),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: const Color(0xFF4CAF50).withAlpha(60)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_outline,
+                              color: Color(0xFF4CAF50), size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'E-mail envoyé à ${emailCtrl.text.trim()}\n\nVérifie ta boîte de réception.',
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF2E7D32)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                )
+              : Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Entre ton adresse e-mail et on t'envoie un lien pour choisir un nouveau mot de passe.",
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: AtelierProColors.onSurfaceVariant,
+                            height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        autofocus: emailCtrl.text.isEmpty,
+                        decoration: const InputDecoration(
+                          labelText: 'Adresse e-mail',
+                          prefixIcon:
+                              Icon(Icons.mail_outline, size: 20),
                         ),
-                      );
-                    },
-              child: sending
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Envoyer'),
-            ),
-          ],
+                        validator: (v) => (v == null || !v.contains('@'))
+                            ? 'E-mail invalide'
+                            : null,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+          actions: sent
+              ? [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Fermer'),
+                    ),
+                  ),
+                ]
+              : [
+                  TextButton(
+                    onPressed:
+                        sending ? null : () => Navigator.of(ctx).pop(),
+                    child: const Text('Annuler'),
+                  ),
+                  ElevatedButton(
+                    onPressed: sending
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            setDialogState(() => sending = true);
+                            // Capture du provider avant l'await pour éviter
+                            // l'utilisation de context à travers un gap async.
+                            final authProvider = context.read<AuthProvider>();
+                            final email = emailCtrl.text.trim();
+                            final error = await authProvider
+                                .resetPasswordForEmail(email);
+                            if (!ctx.mounted) return;
+                            if (error != null) {
+                              setDialogState(() => sending = false);
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content: Text(error),
+                                  backgroundColor:
+                                      AtelierProColors.rougeAlerte,
+                                ),
+                              );
+                            } else {
+                              setDialogState(
+                                  () => sent = true);
+                            }
+                          },
+                    child: sending
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Envoyer le lien'),
+                  ),
+                ],
         ),
       ),
     );
@@ -329,17 +415,17 @@ class _AuthScreenState extends State<AuthScreen> {
                           const TextStyle(color: AtelierProColors.rougeAlerte)),
                 ],
                 const SizedBox(height: 12),
-                Row(
+                const Row(
                   children: [
-                    const Expanded(child: Divider()),
+                    Expanded(child: Divider()),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 12),
                       child: Text('OU',
                           style: TextStyle(
                               color: AtelierProColors.onSurfaceMuted,
                               fontSize: 12)),
                     ),
-                    const Expanded(child: Divider()),
+                    Expanded(child: Divider()),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -372,7 +458,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ? 'Un compte, un atelier — en une seule étape'
               : 'Connectez-vous pour gérer votre atelier',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AtelierProColors.onSurfaceVariant),
+          style: const TextStyle(color: AtelierProColors.onSurfaceVariant),
         ),
         const SizedBox(height: 20),
         TextFormField(
@@ -387,10 +473,23 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 12),
         TextFormField(
           controller: _passwordCtrl,
-          obscureText: true,
-          decoration: const InputDecoration(
-              labelText: 'Mot de passe',
-              prefixIcon: Icon(Icons.lock_outline, size: 20)),
+          obscureText: !_passwordVisible,
+          decoration: InputDecoration(
+            labelText: 'Mot de passe',
+            prefixIcon: const Icon(Icons.lock_outline, size: 20),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _passwordVisible
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                size: 20,
+                color: AtelierProColors.onSurfaceVariant,
+              ),
+              tooltip: _passwordVisible ? 'Masquer' : 'Afficher',
+              onPressed: () =>
+                  setState(() => _passwordVisible = !_passwordVisible),
+            ),
+          ),
           validator: (v) =>
               (v == null || v.length < 6) ? 'Minimum 6 caractères' : null,
         ),
@@ -399,12 +498,17 @@ class _AuthScreenState extends State<AuthScreen> {
             alignment: Alignment.centerRight,
             child: TextButton(
                 onPressed: _forgotPassword,
+                style: TextButton.styleFrom(
+                  foregroundColor: AtelierProColors.primary,
+                  textStyle: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w500),
+                ),
                 child: const Text('Mot de passe oublié ?')),
           ),
         if (_isSignUp) ...[
           const SizedBox(height: 8),
           const Text(
-            "Tu pourras configurer ton atelier juste après la connexion.",
+            'Tu pourras configurer ton atelier juste après la connexion.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: AtelierProColors.onSurfaceMuted),
           ),
@@ -422,7 +526,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(_isSignUp
-                        ? "Créer mon compte et mon atelier"
+                        ? 'Créer mon compte et mon atelier'
                         : 'Se connecter'),
                     const SizedBox(width: 8),
                     const Icon(Icons.arrow_forward, size: 18),
@@ -455,8 +559,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ? 'Entre le code à 6 chiffres envoyé au ${normalizePhone(_phoneCtrl.text.trim())}'
               : 'Compte créé automatiquement à la première connexion',
           textAlign: TextAlign.center,
-          style:
-              TextStyle(color: AtelierProColors.onSurfaceVariant, fontSize: 13),
+          style: const TextStyle(color: AtelierProColors.onSurfaceVariant, fontSize: 13),
         ),
         const SizedBox(height: 20),
         if (!_codeSent) ...[

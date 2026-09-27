@@ -221,8 +221,14 @@ class OrdersProvider extends ChangeNotifier {
         try {
           final listConsommes =
               materiauxDefaut.map((m) => {'nom': m, 'quantite': 1.0}).toList();
-          await stockProvider.consommerMateriaux(order.userId, listConsommes);
-        } catch (_) {}
+          final stockErr =
+              await stockProvider.consommerMateriaux(order.userId, listConsommes);
+          if (stockErr != null) {
+            debugPrint('Avertissement déduction stock : $stockErr');
+          }
+        } catch (e) {
+          debugPrint('Erreur lors de la déduction du stock : $e');
+        }
       }
 
       debugPrint('Commande créée avec succès : ${docRef.id}');
@@ -235,7 +241,7 @@ class OrdersProvider extends ChangeNotifier {
       debugPrint('STACK   : $stackTrace');
       debugPrint('====================================');
 
-      return '${e.code} : ${e.message ?? "Erreur Firestore"}';
+      return friendlyFirestoreError(e);
     } catch (e, stackTrace) {
       debugPrint('========== ERROR ==========');
       debugPrint('ERROR : $e');

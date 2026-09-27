@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/contact_actions.dart';
+import '../../core/currency_formatter.dart';
 import '../../core/theme.dart';
 import '../../models/order.dart';
 import '../../models/client.dart';
@@ -14,8 +15,7 @@ import '../../providers/fiches_mesures_provider.dart';
 import '../../widgets/error_banner.dart';
 import '../../widgets/spinner.dart';
 
-final _money =
-    NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0);
+final _money = CurrencyFormatter.formatter;
 final _dateShort = DateFormat('dd/MM');
 
 String _salutation() {

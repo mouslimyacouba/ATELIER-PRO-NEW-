@@ -17,6 +17,7 @@ import 'providers/fiches_mesures_provider.dart';
 import 'providers/modeles_provider.dart';
 import 'providers/metier_provider.dart';
 import 'providers/stock_provider.dart';
+import 'providers/theme_provider.dart';
 import 'core/notification_service.dart';
 
 Future<void> main() async {
@@ -59,6 +60,7 @@ class AtelierProApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AtelierProvider()),
         ChangeNotifierProvider(create: (_) => ClientsProvider()),
@@ -147,10 +149,13 @@ class _AtelierProRouterState extends State<_AtelierProRouter> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
     return MaterialApp.router(
       title: 'AtelierPro',
       debugShowCheckedModeBanner: false,
       theme: AtelierProTheme.light,
+      darkTheme: AtelierProTheme.dark,
+      themeMode: themeProvider.themeMode,
       routerConfig: _router,
     );
   }
