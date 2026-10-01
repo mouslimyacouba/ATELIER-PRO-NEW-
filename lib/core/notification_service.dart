@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import '../models/order.dart';
+import '../models/order.dart'; // duplicate, removing in next step
 
 /// Rappels locaux de livraison. Aucun serveur impliqué : chaque appareil
 /// planifie ses propres notifications via le système d'exploitation, donc
@@ -114,7 +116,12 @@ class NotificationService {
   /// en groupant le résumé si plusieurs sont en retard.
   static Future<void> syncReminders(List<AtelierOrder> orders) async {
     if (!_initialized) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('notifications_enabled') ?? true;
+
     await _plugin.cancelAll();
+    if (!enabled) return;
 
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);

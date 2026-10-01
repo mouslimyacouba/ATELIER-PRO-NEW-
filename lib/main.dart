@@ -18,6 +18,7 @@ import 'providers/modeles_provider.dart';
 import 'providers/metier_provider.dart';
 import 'providers/stock_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/settings_provider.dart';
 import 'core/notification_service.dart';
 
 Future<void> main() async {
@@ -61,6 +62,7 @@ class AtelierProApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AtelierProvider()),
         ChangeNotifierProvider(create: (_) => ClientsProvider()),
